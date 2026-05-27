@@ -4,8 +4,11 @@
   "description": "Extracted problem data and static sheet browsers for:",
   "main": "index.js",
   "scripts": {
+    "dev": "vite --host 0.0.0.0 --open /",
+    "preview": "vite preview --host 0.0.0.0 --open /",
     "extract:tuf": "node scripts/extract-tuf-sheets.mjs",
-    "excel": "node scripts/create-excel.mjs"
+    "excel": "node scripts/create-excel.mjs",
+    "validate": "node --check assets/app.js && node --check scripts/create-excel.mjs && node --check scripts/extract-tuf-sheets.mjs && npm run excel"
   },
   "repository": {
     "type": "git",
@@ -21,5 +24,8 @@
   "homepage": "https://github.com/khush2808/dsa-sheets#readme",
   "dependencies": {
     "write-excel-file": "^4.0.7"
+  },
+  "devDependencies": {
+    "vite": "^8.0.14"
   }
 }

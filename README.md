@@ -29,10 +29,32 @@ Extracted problem data, Excel exports, and static sheet browsers for:
 
 ## Local Preview
 
-Serve the folder with any static server from the repository root and open `/`.
+Install dependencies once:
+
+```sh
+npm install
+```
+
+Run the dev server with auto-reload:
+
+```sh
+npm run dev
+```
+
+Vite serves the repository root as a static multi-page site and opens `/`. Changes to HTML, CSS, and JS reload the browser automatically.
+
+For a no-dependency fallback, serve the folder with any static server:
 
 ```sh
 python3 -m http.server 4174
 ```
 
 Routes: `/strivers-a2z-sheet/`, `/blind-75-sheet/`, `/sde-sheet/`, `/striver-79-sheet/`, `/neetcode-all/`, `/neetcode-250/`, `/neetcode-150/`, and `/blind-75/`.
+
+## Scripts
+
+- `npm run dev` - start Vite dev server with auto-reload.
+- `npm run preview` - preview the static site through Vite.
+- `npm run extract:tuf` - refresh the takeUforward sheet JSON files.
+- `npm run excel` - regenerate Excel exports.
+- `npm run validate` - syntax-check scripts and regenerate Excel exports.
