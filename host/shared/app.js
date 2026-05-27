@@ -1,0 +1,228 @@
+const state = {
+  data: null,
+  category: 'all',
+  difficulty: 'all',
+  list: 'all',
+  query: ''
+};
+
+const $ = (selector) => document.querySelector(selector);
+
+const config = window.SHEET_CONFIG;
+
+const slug = (value) =>
+  String(value)
+    .toLowerCase()
+    .replace(/&/g, 'and')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+
+const groupName = (problem) =>
+  config.type === 'striver' ? problem.category_name : problem.pattern;
+
+const subName = (problem) =>
+  config.type === 'striver' ? problem.subcategory_name : problem.code;
+
+const isInList = (problem, list) => {
+  if (list === 'all') return true;
+  return Boolean(problem.list_membership?.[list]);
+};
+
+const linkSet = (problem) => {
+  if (config.type === 'striver') {
+    return [
+      ['Article', problem.article],
+      ['LeetCode', problem.leetcode],
+      ['YouTube', problem.youtube],
+      ['TUF+', problem.plus],
+      ['Editorial', problem.editorial]
+    ];
+  }
+
+  return [
+    ['LeetCode', problem.leetcode],
+    ['NeetCode', problem.neetcode],
+    ['Solution', problem.solution],
+    ['YouTube', problem.youtube]
+  ];
+};
+
+const filteredProblems = () =>
+  state.data.problems.filter((problem) => {
+    const haystack = [
+      problem.problem_name,
+      groupName(problem),
+      subName(problem),
+      problem.difficulty,
+      problem.code
+    ].join(' ').toLowerCase();
+
+    return (
+      (state.category === 'all' || slug(groupName(problem)) === state.category) &&
+      (state.difficulty === 'all' || problem.difficulty === state.difficulty) &&
+      isInList(problem, state.list) &&
+      haystack.includes(state.query.toLowerCase())
+    );
+  });
+
+const renderStats = () => {
+  const problems = filteredProblems();
+  const easy = problems.filter((problem) => problem.difficulty === 'Easy').length;
+  const medium = problems.filter((problem) => problem.difficulty === 'Medium').length;
+  const hard = problems.filter((problem) => problem.difficulty === 'Hard').length;
+  $('.stat-grid').innerHTML = [
+    ['Problems', problems.length],
+    ['Easy', easy],
+    ['Medium', medium],
+    ['Hard', hard]
+  ]
+    .map(([label, value]) => `<div class="stat"><b>${value}</b><span>${label}</span></div>`)
+    .join('');
+};
+
+const renderCategories = () => {
+  const groups = config.type === 'striver' ? state.data.sections : state.data.patterns;
+  $('.category-list').innerHTML = [
+    `<button class="${state.category === 'all' ? 'active' : ''}" data-category="all"><span>All</span><b>${state.data.problems.length}</b></button>`,
+    ...groups.map((group) => {
+      const name = config.type === 'striver' ? group.category_name : group.pattern_name;
+      return `<button class="${state.category === slug(name) ? 'active' : ''}" data-category="${slug(name)}"><span>${name}</span><b>${group.problem_count}</b></button>`;
+    })
+  ].join('');
+};
+
+const renderRows = () => {
+  const problems = filteredProblems();
+  $('.result-count').textContent = `${problems.length} shown`;
+  $('.problem-list').innerHTML =
+    problems
+      .map((problem) => {
+        const links = linkSet(problem)
+          .filter(([, href]) => href)
+          .map(([label, href]) => `<a href="${href}" target="_blank" rel="noreferrer">${label}</a>`)
+          .join('');
+
+        return `<article class="problem-row">
+          <div class="problem-title">
+            <b>${problem.problem_name}</b>
+            <span>${subName(problem) || ''}</span>
+          </div>
+          <div>${groupName(problem)}</div>
+          <div><span class="pill ${String(problem.difficulty).toLowerCase()}">${problem.difficulty}</span></div>
+          <div class="links">${links}</div>
+        </article>`;
+      })
+      .join('') || `<div class="empty">No problems match the current filters.</div>`;
+};
+
+const renderFilters = () => {
+  const groups = [...new Set(state.data.problems.map(groupName))];
+  $('#categoryFilter').innerHTML = [
+    '<option value="all">All categories</option>',
+    ...groups.map((group) => `<option value="${slug(group)}">${group}</option>`)
+  ].join('');
+
+  if (config.type === 'neetcode') {
+    $('#listFilter').innerHTML = `
+      <option value="all">All lists</option>
+      <option value="blind75">Blind 75</option>
+      <option value="neetcode150">NeetCode 150</option>
+      <option value="neetcode250">NeetCode 250</option>
+      <option value="premium_algo100">Algo 100</option>
+      <option value="pro">Pro</option>`;
+  } else {
+    $('#listFilter').hidden = true;
+  }
+};
+
+const renderCanvas = () => {
+  const canvas = $('#heroCanvas');
+  const ctx = canvas.getContext('2d');
+  const resize = () => {
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = Math.floor(rect.width * devicePixelRatio);
+    canvas.height = Math.floor(rect.height * devicePixelRatio);
+    ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+    draw();
+  };
+  const draw = () => {
+    const width = canvas.clientWidth;
+    const height = canvas.clientHeight;
+    ctx.clearRect(0, 0, width, height);
+    const colors = ['#0f8b8d', '#edae49', '#d1495b', '#ffffff'];
+    for (let i = 0; i < 42; i++) {
+      const x = ((i * 97) % width) + 20;
+      const y = ((i * 53) % height) + 12;
+      const size = 2 + (i % 5);
+      ctx.fillStyle = colors[i % colors.length];
+      ctx.globalAlpha = 0.72;
+      ctx.fillRect(x, y, size, size);
+      if (i % 3 === 0) {
+        ctx.strokeStyle = colors[(i + 1) % colors.length];
+        ctx.globalAlpha = 0.22;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo((x + 140) % width, (y + 90) % height);
+        ctx.stroke();
+      }
+    }
+    ctx.globalAlpha = 1;
+  };
+  resize();
+  addEventListener('resize', resize);
+};
+
+const rerender = () => {
+  renderStats();
+  renderCategories();
+  renderRows();
+};
+
+const init = async () => {
+  state.data = await fetch(config.dataUrl).then((response) => response.json());
+  document.title = config.title;
+  $('.brand h1').textContent = config.shortTitle;
+  $('.brand p').textContent = config.subtitle;
+  $('.eyebrow').textContent = config.kicker;
+  $('.hero h2').textContent = config.title;
+  $('.hero p').textContent = config.description;
+  $('.download').href = config.excelUrl;
+
+  renderFilters();
+  renderCanvas();
+  rerender();
+
+  $('#search').addEventListener('input', (event) => {
+    state.query = event.target.value;
+    rerender();
+  });
+  $('#categoryFilter').addEventListener('change', (event) => {
+    state.category = event.target.value;
+    rerender();
+  });
+  $('#difficultyFilter').addEventListener('change', (event) => {
+    state.difficulty = event.target.value;
+    rerender();
+  });
+  $('#listFilter').addEventListener('change', (event) => {
+    state.list = event.target.value;
+    rerender();
+  });
+  $('#randomButton').addEventListener('click', () => {
+    const problems = filteredProblems();
+    if (!problems.length) return;
+    const problem = problems[Math.floor(Math.random() * problems.length)];
+    state.query = problem.problem_name;
+    $('#search').value = problem.problem_name;
+    rerender();
+  });
+  $('.category-list').addEventListener('click', (event) => {
+    const button = event.target.closest('button[data-category]');
+    if (!button) return;
+    state.category = button.dataset.category;
+    $('#categoryFilter').value = state.category;
+    rerender();
+  });
+};
+
+init();
