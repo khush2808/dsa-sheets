@@ -1,6 +1,6 @@
 # DSA Sheets
 
-Extracted problem data and static sheet browsers for:
+Extracted problem data, Excel exports, and static sheet browsers for:
 
 - `strivers-a2z-sheet` - Striver's A2Z Sheet
 - `striver-450-sheet` - alias to Striver's A2Z Sheet
@@ -14,11 +14,12 @@ Extracted problem data and static sheet browsers for:
 
 ## Files
 
-- `strivers-a2z-problems.json`
-- `blind-75-sheet-problems.json`
-- `sde-sheet-problems.json`
-- `striver-79-sheet-problems.json`
-- `neetcode-problems.json`
+- `assets/` - shared UI scripts and styles
+- `data/strivers-a2z-problems.json`
+- `data/blind-75-sheet-problems.json`
+- `data/sde-sheet-problems.json`
+- `data/striver-79-sheet-problems.json`
+- `data/neetcode-problems.json`
 - `sheets/strivers-a2z-problems.xlsx`
 - `sheets/blind-75-sheet-problems.xlsx`
 - `sheets/sde-sheet-problems.xlsx`
@@ -26,4 +27,12 @@ Extracted problem data and static sheet browsers for:
 - `sheets/neetcode-problems.xlsx`
 - `sheets/dsa-problem-lists.xlsx`
 
-Serve the folder with any static server from the repository root and open `/strivers-a2z-sheet/`, `/blind-75-sheet/`, `/sde-sheet/`, `/striver-79-sheet/`, `/neetcode-all/`, `/neetcode-250/`, `/neetcode-150/`, or `/blind-75/`.
+## Local Preview
+
+Serve the folder with any static server from the repository root and open `/`.
+
+```sh
+python3 -m http.server 4174
+```
+
+Routes: `/strivers-a2z-sheet/`, `/blind-75-sheet/`, `/sde-sheet/`, `/striver-79-sheet/`, `/neetcode-all/`, `/neetcode-250/`, `/neetcode-150/`, and `/blind-75/`.

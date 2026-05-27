@@ -3,10 +3,11 @@ import path from 'node:path';
 import writeXlsxFile from 'write-excel-file/node';
 
 const root = path.resolve(import.meta.dirname, '..');
+const dataDir = path.join(root, 'data');
 const sheetsDir = path.join(root, 'sheets');
 
 const readJson = async (filename) =>
-  JSON.parse(await fs.readFile(path.join(root, filename), 'utf8'));
+  JSON.parse(await fs.readFile(path.join(dataDir, filename), 'utf8'));
 
 const cell = (value) => ({
   type: typeof value === 'number' && Number.isFinite(value) ? Number : String,

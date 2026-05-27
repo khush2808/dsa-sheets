@@ -3,10 +3,147 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta http-equiv="refresh" content="0; url=./strivers-a2z-sheet/" />
     <title>DSA Sheets</title>
+    <meta
+      name="description"
+      content="A cleaner, faster UI for Striver, takeUforward, and NeetCode DSA problem sheets with Excel exports."
+    />
+    <link rel="stylesheet" href="./assets/landing.css" />
   </head>
   <body>
-    <a href="./strivers-a2z-sheet/">Open Striver A2Z</a>
+    <header class="page nav">
+      <div class="brand">
+        <div class="mark">DSA</div>
+        <span>DSA Sheets</span>
+      </div>
+      <div class="nav-actions">
+        <a class="button" href="https://github.com/khush2808/dsa-sheets">GitHub</a>
+        <a class="button primary" href="./strivers-a2z-sheet/">Open A2Z</a>
+      </div>
+    </header>
+
+    <main class="page">
+      <section class="hero">
+        <div class="hero-copy">
+          <div class="hero-inner">
+            <p class="eyebrow">same sheets, less suffering</p>
+            <h1>DSA problem sheets with a UI that gets out of your way.</h1>
+            <p>
+              Search, filter, jump into articles or solutions, and download Excel files for the
+              Striver, takeUforward, and NeetCode lists you actually use.
+            </p>
+            <div class="hero-links">
+              <a class="button" href="./strivers-a2z-sheet/">Start with Striver A2Z</a>
+              <a class="button secondary" href="./sheets/dsa-problem-lists.xlsx">Download all sheets</a>
+            </div>
+          </div>
+        </div>
+        <aside class="panel">
+          <div class="quote">
+            If you love the Striver sheet but hate the UI on takeUforward, you don't have to
+            suffer anymore.
+          </div>
+          <div class="stat-grid">
+            <div class="stat"><b>10</b><span>Excel tabs in the global workbook</span></div>
+            <div class="stat"><b>7</b><span>Focused web routes</span></div>
+            <div class="stat"><b>2k+</b><span>Problem rows across sources</span></div>
+            <div class="stat"><b>0</b><span>Accounts needed</span></div>
+          </div>
+        </aside>
+      </section>
+
+      <section class="section-head">
+        <div>
+          <h2>Pick a Sheet</h2>
+          <p>
+            Each route is a standalone static page with search, filters, direct problem links, and
+            its own Excel export.
+          </p>
+        </div>
+      </section>
+
+      <section class="sheets" aria-label="Available sheets">
+        <article class="card">
+          <h3>Striver A2Z</h3>
+          <p>The full A2Z DSA track with article, LeetCode, video, Plus, and editorial links.</p>
+          <div class="meta"><span>474 problems</span><span>TUF</span></div>
+          <div class="card-actions">
+            <a href="./strivers-a2z-sheet/">Open</a>
+            <a href="./sheets/strivers-a2z-problems.xlsx">Excel</a>
+          </div>
+        </article>
+        <article class="card">
+          <h3>Blind 75 Sheet</h3>
+          <p>The takeUforward Blind 75 list with video-backed interview problems.</p>
+          <div class="meta"><span>75 problems</span><span>TUF</span></div>
+          <div class="card-actions">
+            <a href="./blind-75-sheet/">Open</a>
+            <a href="./sheets/blind-75-sheet-problems.xlsx">Excel</a>
+          </div>
+        </article>
+        <article class="card">
+          <h3>SDE Sheet</h3>
+          <p>Striver's most frequently asked coding interview questions, grouped by topic.</p>
+          <div class="meta"><span>191 problems</span><span>TUF</span></div>
+          <div class="card-actions">
+            <a href="./sde-sheet/">Open</a>
+            <a href="./sheets/sde-sheet-problems.xlsx">Excel</a>
+          </div>
+        </article>
+        <article class="card">
+          <h3>Striver 79</h3>
+          <p>Last-minute interview preparation with a compact set of high-signal problems.</p>
+          <div class="meta"><span>79 problems</span><span>TUF</span></div>
+          <div class="card-actions">
+            <a href="./striver-79-sheet/">Open</a>
+            <a href="./sheets/striver-79-sheet-problems.xlsx">Excel</a>
+          </div>
+        </article>
+        <article class="card">
+          <h3>NeetCode All</h3>
+          <p>The full NeetCode catalog with pattern filters and links to solutions.</p>
+          <div class="meta"><span>973 problems</span><span>NeetCode</span></div>
+          <div class="card-actions">
+            <a href="./neetcode-all/">Open</a>
+            <a href="./sheets/neetcode-problems.xlsx">Excel</a>
+          </div>
+        </article>
+        <article class="card">
+          <h3>NeetCode 250</h3>
+          <p>A focused NeetCode 250 route and export for the common track.</p>
+          <div class="meta"><span>250 problems</span><span>NeetCode</span></div>
+          <div class="card-actions">
+            <a href="./neetcode-250/">Open</a>
+            <a href="./sheets/neetcode-250-problems.xlsx">Excel</a>
+          </div>
+        </article>
+        <article class="card">
+          <h3>NeetCode 150</h3>
+          <p>The 150-problem NeetCode list with the same filterable UI.</p>
+          <div class="meta"><span>150 problems</span><span>NeetCode</span></div>
+          <div class="card-actions">
+            <a href="./neetcode-150/">Open</a>
+            <a href="./sheets/neetcode-150-problems.xlsx">Excel</a>
+          </div>
+        </article>
+        <article class="card">
+          <h3>NeetCode Blind 75</h3>
+          <p>The NeetCode-flavored Blind 75 list, kept separate from the TUF Blind 75 sheet.</p>
+          <div class="meta"><span>75 problems</span><span>NeetCode</span></div>
+          <div class="card-actions">
+            <a href="./blind-75/">Open</a>
+            <a href="./sheets/blind-75-problems.xlsx">Excel</a>
+          </div>
+        </article>
+        <article class="card">
+          <h3>Everything</h3>
+          <p>One workbook with all problem-list tabs in one place.</p>
+          <div class="meta"><span>10 tabs</span><span>Excel</span></div>
+          <div class="card-actions">
+            <a href="./sheets/dsa-problem-lists.xlsx">Download</a>
+          </div>
+        </article>
+      </section>
+    </main>
   </body>
 </html>

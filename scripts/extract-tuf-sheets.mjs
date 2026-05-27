@@ -3,6 +3,7 @@ import vm from 'node:vm';
 import path from 'node:path';
 
 const root = path.resolve(import.meta.dirname, '..');
+const dataDir = path.join(root, 'data');
 
 const sources = [
   {
@@ -144,7 +145,8 @@ const extractSource = async (source) => {
 
 for (const source of sources) {
   const data = await extractSource(source);
-  const outputPath = path.join(root, source.output);
+  await fs.mkdir(dataDir, { recursive: true });
+  const outputPath = path.join(dataDir, source.output);
   await fs.writeFile(outputPath, `${JSON.stringify(data, null, 2)}\n`);
   console.log(`Wrote ${source.output}: ${data.total_problems} problems`);
 }
