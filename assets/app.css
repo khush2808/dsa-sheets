@@ -277,14 +277,6 @@ a {
   overflow: hidden;
 }
 
-.problem-head,
-.problem-row {
-  display: grid;
-  grid-template-columns: minmax(15rem, 1.25fr) minmax(10rem, 0.8fr) 7rem minmax(14rem, 1fr);
-  gap: 1rem;
-  align-items: center;
-}
-
 .problem-head {
   padding: 0.8rem 1rem;
   color: var(--muted);
@@ -292,9 +284,70 @@ a {
   font-weight: 800;
   text-transform: uppercase;
   border-bottom: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.problem-list {
+  display: grid;
+  gap: 0;
+}
+
+.problem-section {
+  border-bottom: 1px solid var(--line);
+}
+
+.problem-section:last-child {
+  border-bottom: 0;
+}
+
+.section-card {
+  margin: 0;
+  padding: 0.9rem 1rem;
+  background: linear-gradient(90deg, rgba(15, 139, 141, 0.12), rgba(237, 174, 73, 0.12));
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.section-card h3 {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.section-card p {
+  margin: 0.2rem 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.section-card > span {
+  flex: 0 0 auto;
+  min-width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  font-weight: 800;
+}
+
+.section-problems {
+  display: grid;
 }
 
 .problem-row {
+  display: grid;
+  grid-template-columns: minmax(14rem, 1fr) minmax(14rem, auto);
+  gap: 1rem;
+  align-items: center;
   padding: 0.9rem 1rem;
   border-bottom: 1px solid var(--line);
 }
@@ -314,6 +367,13 @@ a {
 
 .problem-title {
   min-width: 0;
+}
+
+.problem-line {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
 }
 
 .problem-title b {
@@ -366,6 +426,7 @@ a {
   display: flex;
   flex-wrap: wrap;
   gap: 0.45rem;
+  justify-content: flex-end;
 }
 
 .links a {
@@ -398,10 +459,14 @@ a {
   }
 
   .problem-head {
-    display: none;
+    display: flex;
   }
 
   .problem-row {
     grid-template-columns: 1fr;
+  }
+
+  .links {
+    justify-content: flex-start;
   }
 }

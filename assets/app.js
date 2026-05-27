@@ -33,32 +33,22 @@ const groupName = (problem) =>
 const subName = (problem) =>
   config.type === 'striver' ? problem.subcategory_name : problem.code;
 
+const articleLink = (problem) => problem.article || problem.solution;
+
 const isInList = (problem, list) => {
   if (list === 'all') return true;
   return Boolean(problem.list_membership?.[list]);
 };
 
-const linkSet = (problem) => {
-  if (config.type === 'striver') {
-    return [
-      ['Article', problem.article],
-      ['LeetCode', problem.leetcode],
-      ['YouTube', problem.youtube],
-      ['TUF+', problem.plus],
-      ['Editorial', problem.editorial]
-    ];
-  }
-
-  return [
-    ['LeetCode', problem.leetcode],
-    ['NeetCode', problem.neetcode],
-    ['Solution', problem.solution],
-    ['YouTube', problem.youtube]
-  ];
-};
+const linkSet = (problem) => [
+  ['Article', articleLink(problem)],
+  ['YouTube', problem.youtube],
+  ['LeetCode', problem.leetcode],
+  ['Other', problem.link]
+];
 
 const primaryLink = (problem) =>
-  config.type === 'striver' ? problem.article : problem.solution;
+  articleLink(problem) || problem.leetcode || problem.youtube || problem.link;
 
 const filteredProblems = () =>
   state.data.problems.filter((problem) => {
@@ -112,29 +102,55 @@ const renderCategories = () => {
 
 const renderRows = () => {
   const problems = filteredProblems();
-  $('.result-count').textContent = `${problems.length} shown`;
+  const headLabel = state.category === 'all' ? 'Sections' : problems[0] ? groupName(problems[0]) : 'Section';
+  $('.problem-head').innerHTML = `
+    <span>${escapeHtml(headLabel)}</span>
+    <span class="result-count">${problems.length} shown</span>`;
+  const groupedProblems = problems.reduce((groups, problem) => {
+    const name = groupName(problem) || 'Uncategorized';
+    if (!groups.has(name)) groups.set(name, []);
+    groups.get(name).push(problem);
+    return groups;
+  }, new Map());
+
   $('.problem-list').innerHTML =
-    problems
-      .map((problem) => {
-        const mainHref = primaryLink(problem);
-        const links = linkSet(problem)
-          .filter(([, href]) => href)
-          .map(([label, href]) => `<a href="${escapeAttr(href)}">${escapeHtml(label)}</a>`)
+    [...groupedProblems.entries()]
+      .map(([name, groupProblems]) => {
+        const rows = groupProblems
+          .map((problem) => {
+            const mainHref = primaryLink(problem);
+            const links = linkSet(problem)
+              .filter(([, href]) => href)
+              .map(([label, href]) => `<a href="${escapeAttr(href)}">${escapeHtml(label)}</a>`)
+              .join('');
+
+            return `<article class="problem-row ${mainHref ? 'clickable' : ''}" ${mainHref ? `data-primary-link="${escapeAttr(mainHref)}"` : ''}>
+              <div class="problem-title">
+                <div class="problem-line">
+                  ${
+                    mainHref
+                      ? `<a class="primary-link" href="${escapeAttr(mainHref)}">${escapeHtml(problem.problem_name)}</a>`
+                      : `<b>${escapeHtml(problem.problem_name)}</b>`
+                  }
+                  <span class="pill ${String(problem.difficulty).toLowerCase()}">${escapeHtml(problem.difficulty)}</span>
+                </div>
+                <span>${escapeHtml(subName(problem) || '')}</span>
+              </div>
+              <div class="links">${links}</div>
+            </article>`;
+          })
           .join('');
 
-        return `<article class="problem-row ${mainHref ? 'clickable' : ''}" ${mainHref ? `data-primary-link="${escapeAttr(mainHref)}"` : ''}>
-          <div class="problem-title">
-            ${
-              mainHref
-                ? `<a class="primary-link" href="${escapeAttr(mainHref)}">${escapeHtml(problem.problem_name)}</a>`
-                : `<b>${escapeHtml(problem.problem_name)}</b>`
-            }
-            <span>${escapeHtml(subName(problem) || '')}</span>
-          </div>
-          <div>${escapeHtml(groupName(problem))}</div>
-          <div><span class="pill ${String(problem.difficulty).toLowerCase()}">${escapeHtml(problem.difficulty)}</span></div>
-          <div class="links">${links}</div>
-        </article>`;
+        return `<section class="problem-section">
+          <header class="section-card">
+            <div>
+              <h3>${escapeHtml(name)}</h3>
+              <p>${escapeHtml(config.type === 'striver' ? 'Section' : 'Pattern')}</p>
+            </div>
+            <span>${groupProblems.length}</span>
+          </header>
+          <div class="section-problems">${rows}</div>
+        </section>`;
       })
       .join('') || `<div class="empty">No problems match the current filters.</div>`;
 };
