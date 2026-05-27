@@ -2,7 +2,7 @@ const state = {
   data: null,
   category: 'all',
   difficulty: 'all',
-  list: 'all',
+  list: window.SHEET_CONFIG.initialList || 'all',
   query: ''
 };
 
@@ -65,6 +65,9 @@ const filteredProblems = () =>
     );
   });
 
+const routeProblems = () =>
+  state.data.problems.filter((problem) => isInList(problem, config.initialList || 'all'));
+
 const renderStats = () => {
   const problems = filteredProblems();
   const easy = problems.filter((problem) => problem.difficulty === 'Easy').length;
@@ -82,11 +85,14 @@ const renderStats = () => {
 
 const renderCategories = () => {
   const groups = config.type === 'striver' ? state.data.sections : state.data.patterns;
+  const routeScopedProblems = routeProblems();
   $('.category-list').innerHTML = [
-    `<button class="${state.category === 'all' ? 'active' : ''}" data-category="all"><span>All</span><b>${state.data.problems.length}</b></button>`,
+    `<button class="${state.category === 'all' ? 'active' : ''}" data-category="all"><span>All</span><b>${routeScopedProblems.length}</b></button>`,
     ...groups.map((group) => {
       const name = config.type === 'striver' ? group.category_name : group.pattern_name;
-      return `<button class="${state.category === slug(name) ? 'active' : ''}" data-category="${slug(name)}"><span>${name}</span><b>${group.problem_count}</b></button>`;
+      const count = routeScopedProblems.filter((problem) => groupName(problem) === name).length;
+      if (!count) return '';
+      return `<button class="${state.category === slug(name) ? 'active' : ''}" data-category="${slug(name)}"><span>${name}</span><b>${count}</b></button>`;
     })
   ].join('');
 };
@@ -130,6 +136,10 @@ const renderFilters = () => {
       <option value="neetcode250">NeetCode 250</option>
       <option value="premium_algo100">Algo 100</option>
       <option value="pro">Pro</option>`;
+    $('#listFilter').value = state.list;
+    if (config.lockList) {
+      $('#listFilter').hidden = true;
+    }
   } else {
     $('#listFilter').hidden = true;
   }
