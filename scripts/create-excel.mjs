@@ -1,108 +1,44 @@
 import fs from 'node:fs/promises';
-import { existsSync } from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
+import writeXlsxFile from 'write-excel-file/node';
 
 const root = path.resolve(import.meta.dirname, '..');
 const sheetsDir = path.join(root, 'sheets');
 
-const escapeXml = (value) =>
-  String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
-
-const colName = (index) => {
-  let name = '';
-  let n = index + 1;
-  while (n > 0) {
-    const rem = (n - 1) % 26;
-    name = String.fromCharCode(65 + rem) + name;
-    n = Math.floor((n - 1) / 26);
-  }
-  return name;
-};
-
-const cell = (rowIndex, colIndex, value) => {
-  const ref = `${colName(colIndex)}${rowIndex}`;
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return `<c r="${ref}"><v>${value}</v></c>`;
-  }
-  return `<c r="${ref}" t="inlineStr"><is><t>${escapeXml(value)}</t></is></c>`;
-};
-
-const rowXml = (row, rowIndex) =>
-  `<row r="${rowIndex}">${row.map((value, colIndex) => cell(rowIndex, colIndex, value)).join('')}</row>`;
-
-const worksheetXml = (rows) => {
-  const widthCount = rows[0]?.length ?? 1;
-  const cols = Array.from({ length: widthCount }, (_, index) => {
-    const max = Math.min(
-      60,
-      Math.max(12, ...rows.map((row) => String(row[index] ?? '').length + 2))
-    );
-    return `<col min="${index + 1}" max="${index + 1}" width="${max}" customWidth="1"/>`;
-  }).join('');
-
-  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-  <cols>${cols}</cols>
-  <sheetData>${rows.map(rowXml).join('')}</sheetData>
-</worksheet>`;
-};
-
-const workbookXml = (sheetName) => `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-  <sheets>
-    <sheet name="${escapeXml(sheetName)}" sheetId="1" r:id="rId1"/>
-  </sheets>
-</workbook>`;
-
-const writeWorkbook = async ({ filename, sheetName, headers, rows }) => {
-  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'dsa-sheet-xlsx-'));
-  const workbookDir = path.join(tempDir, 'xl');
-  const relsDir = path.join(tempDir, '_rels');
-  const workbookRelsDir = path.join(workbookDir, '_rels');
-  const worksheetsDir = path.join(workbookDir, 'worksheets');
-
-  await fs.mkdir(relsDir, { recursive: true });
-  await fs.mkdir(workbookRelsDir, { recursive: true });
-  await fs.mkdir(worksheetsDir, { recursive: true });
-
-  await fs.writeFile(path.join(tempDir, '[Content_Types].xml'), `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-  <Default Extension="xml" ContentType="application/xml"/>
-  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
-  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
-</Types>`);
-  await fs.writeFile(path.join(relsDir, '.rels'), `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
-</Relationships>`);
-  await fs.writeFile(path.join(workbookRelsDir, 'workbook.xml.rels'), `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
-</Relationships>`);
-  await fs.writeFile(path.join(workbookDir, 'workbook.xml'), workbookXml(sheetName));
-  await fs.writeFile(path.join(worksheetsDir, 'sheet1.xml'), worksheetXml([headers, ...rows]));
-
-  await fs.mkdir(sheetsDir, { recursive: true });
-  const outputPath = path.join(sheetsDir, filename);
-  if (existsSync(outputPath)) await fs.rm(outputPath);
-  execFileSync('zip', ['-qr', outputPath, '.'], { cwd: tempDir });
-  await fs.rm(tempDir, { recursive: true, force: true });
-};
-
 const readJson = async (filename) =>
   JSON.parse(await fs.readFile(path.join(root, filename), 'utf8'));
 
+const cell = (value) => ({
+  type: typeof value === 'number' && Number.isFinite(value) ? Number : String,
+  value: value ?? ''
+});
+
+const headerCell = (value) => ({
+  value,
+  type: String,
+  fontWeight: 'bold',
+  backgroundColor: '#EEF2FF'
+});
+
+const sheetDefinition = ({ sheetName, headers, rows }) => ({
+  sheet: sheetName,
+  data: [[...headers.map(headerCell)], ...rows.map((row) => row.map(cell))],
+  columns: headers.map((header, index) => ({
+    width: Math.min(
+      60,
+      Math.max(14, header.length + 2, ...rows.map((row) => String(row[index] ?? '').length + 2))
+    )
+  })),
+  stickyRowsCount: 1
+});
+
+const writeWorkbook = async ({ filename, sheets }) => {
+  await fs.mkdir(sheetsDir, { recursive: true });
+  await writeXlsxFile(sheets.map(sheetDefinition)).toFile(path.join(sheetsDir, filename));
+};
+
 const striver = await readJson('strivers-a2z-problems.json');
-await writeWorkbook({
-  filename: 'strivers-a2z-problems.xlsx',
+const striverSheet = {
   sheetName: 'Striver A2Z',
   headers: [
     'Problem ID',
@@ -128,28 +64,27 @@ await writeWorkbook({
     problem.plus,
     problem.editorial
   ])
-});
+};
 
 const neetcode = await readJson('neetcode-problems.json');
-await writeWorkbook({
-  filename: 'neetcode-problems.xlsx',
-  sheetName: 'NeetCode',
-  headers: [
-    'Problem Name',
-    'Pattern',
-    'Difficulty',
-    'Code',
-    'LeetCode',
-    'NeetCode',
-    'Solution',
-    'YouTube',
-    'Blind 75',
-    'NeetCode 150',
-    'NeetCode 250',
-    'Premium Algo 100',
-    'Pro'
-  ],
-  rows: neetcode.problems.map((problem) => [
+const neetcodeHeaders = [
+  'Problem Name',
+  'Pattern',
+  'Difficulty',
+  'Code',
+  'LeetCode',
+  'NeetCode',
+  'Solution',
+  'YouTube',
+  'Blind 75',
+  'NeetCode 150',
+  'NeetCode 250',
+  'Premium Algo 100',
+  'Pro'
+];
+
+const neetcodeRows = (problems) =>
+  problems.map((problem) => [
     problem.problem_name,
     problem.pattern,
     problem.difficulty,
@@ -163,7 +98,43 @@ await writeWorkbook({
     problem.list_membership.neetcode250 ? 'Yes' : 'No',
     problem.list_membership.premium_algo100 ? 'Yes' : 'No',
     problem.list_membership.pro ? 'Yes' : 'No'
-  ])
+  ]);
+
+const neetcodeSheet = {
+  sheetName: 'NeetCode',
+  headers: neetcodeHeaders,
+  rows: neetcodeRows(neetcode.problems)
+};
+
+const neetcodeListSheets = [
+  ['neetcode-250-problems.xlsx', 'NeetCode 250', 'neetcode250'],
+  ['neetcode-150-problems.xlsx', 'NeetCode 150', 'neetcode150'],
+  ['blind-75-problems.xlsx', 'Blind 75', 'blind75'],
+  ['premium-algo-100-problems.xlsx', 'Premium Algo 100', 'premium_algo100'],
+  ['neetcode-pro-problems.xlsx', 'NeetCode Pro', 'pro']
+].map(([filename, sheetName, membershipKey]) => ({
+  filename,
+  sheet: {
+    sheetName,
+    headers: neetcodeHeaders,
+    rows: neetcodeRows(
+      neetcode.problems.filter((problem) => problem.list_membership[membershipKey])
+    )
+  }
+}));
+
+await writeWorkbook({ filename: 'strivers-a2z-problems.xlsx', sheets: [striverSheet] });
+await writeWorkbook({ filename: 'neetcode-problems.xlsx', sheets: [neetcodeSheet] });
+for (const listSheet of neetcodeListSheets) {
+  await writeWorkbook({ filename: listSheet.filename, sheets: [listSheet.sheet] });
+}
+await writeWorkbook({
+  filename: 'dsa-problem-lists.xlsx',
+  sheets: [
+    striverSheet,
+    { ...neetcodeSheet, sheetName: 'NeetCode All' },
+    ...neetcodeListSheets.map((listSheet) => listSheet.sheet)
+  ]
 });
 
 console.log(`Wrote Excel files to ${sheetsDir}`);

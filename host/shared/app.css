@@ -299,6 +299,15 @@ a {
   border-bottom: 1px solid var(--line);
 }
 
+.problem-row.clickable {
+  cursor: pointer;
+}
+
+.problem-row.clickable:hover {
+  border-color: rgba(15, 139, 141, 0.45);
+  box-shadow: 0 12px 32px rgba(42, 48, 35, 0.1);
+}
+
 .problem-row:last-child {
   border-bottom: 0;
 }
@@ -310,6 +319,18 @@ a {
 .problem-title b {
   display: block;
   overflow-wrap: anywhere;
+}
+
+.primary-link {
+  display: inline-block;
+  color: var(--ink);
+  font-weight: 800;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.primary-link:hover {
+  color: var(--accent);
 }
 
 .problem-title span {

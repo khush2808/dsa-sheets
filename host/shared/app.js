@@ -10,6 +10,16 @@ const $ = (selector) => document.querySelector(selector);
 
 const config = window.SHEET_CONFIG;
 
+const escapeHtml = (value) =>
+  String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+
+const escapeAttr = escapeHtml;
+
 const slug = (value) =>
   String(value)
     .toLowerCase()
@@ -47,6 +57,9 @@ const linkSet = (problem) => {
   ];
 };
 
+const primaryLink = (problem) =>
+  config.type === 'striver' ? problem.article : problem.solution;
+
 const filteredProblems = () =>
   state.data.problems.filter((problem) => {
     const haystack = [
@@ -79,7 +92,7 @@ const renderStats = () => {
     ['Medium', medium],
     ['Hard', hard]
   ]
-    .map(([label, value]) => `<div class="stat"><b>${value}</b><span>${label}</span></div>`)
+    .map(([label, value]) => `<div class="stat"><b>${value}</b><span>${escapeHtml(label)}</span></div>`)
     .join('');
 };
 
@@ -92,7 +105,7 @@ const renderCategories = () => {
       const name = config.type === 'striver' ? group.category_name : group.pattern_name;
       const count = routeScopedProblems.filter((problem) => groupName(problem) === name).length;
       if (!count) return '';
-      return `<button class="${state.category === slug(name) ? 'active' : ''}" data-category="${slug(name)}"><span>${name}</span><b>${count}</b></button>`;
+      return `<button class="${state.category === slug(name) ? 'active' : ''}" data-category="${slug(name)}"><span>${escapeHtml(name)}</span><b>${count}</b></button>`;
     })
   ].join('');
 };
@@ -103,18 +116,23 @@ const renderRows = () => {
   $('.problem-list').innerHTML =
     problems
       .map((problem) => {
+        const mainHref = primaryLink(problem);
         const links = linkSet(problem)
           .filter(([, href]) => href)
-          .map(([label, href]) => `<a href="${href}" target="_blank" rel="noreferrer">${label}</a>`)
+          .map(([label, href]) => `<a href="${escapeAttr(href)}">${escapeHtml(label)}</a>`)
           .join('');
 
-        return `<article class="problem-row">
+        return `<article class="problem-row ${mainHref ? 'clickable' : ''}" ${mainHref ? `data-primary-link="${escapeAttr(mainHref)}"` : ''}>
           <div class="problem-title">
-            <b>${problem.problem_name}</b>
-            <span>${subName(problem) || ''}</span>
+            ${
+              mainHref
+                ? `<a class="primary-link" href="${escapeAttr(mainHref)}">${escapeHtml(problem.problem_name)}</a>`
+                : `<b>${escapeHtml(problem.problem_name)}</b>`
+            }
+            <span>${escapeHtml(subName(problem) || '')}</span>
           </div>
-          <div>${groupName(problem)}</div>
-          <div><span class="pill ${String(problem.difficulty).toLowerCase()}">${problem.difficulty}</span></div>
+          <div>${escapeHtml(groupName(problem))}</div>
+          <div><span class="pill ${String(problem.difficulty).toLowerCase()}">${escapeHtml(problem.difficulty)}</span></div>
           <div class="links">${links}</div>
         </article>`;
       })
@@ -125,7 +143,7 @@ const renderFilters = () => {
   const groups = [...new Set(state.data.problems.map(groupName))];
   $('#categoryFilter').innerHTML = [
     '<option value="all">All categories</option>',
-    ...groups.map((group) => `<option value="${slug(group)}">${group}</option>`)
+    ...groups.map((group) => `<option value="${slug(group)}">${escapeHtml(group)}</option>`)
   ].join('');
 
   if (config.type === 'neetcode') {
@@ -232,6 +250,12 @@ const init = async () => {
     state.category = button.dataset.category;
     $('#categoryFilter').value = state.category;
     rerender();
+  });
+  $('.problem-list').addEventListener('click', (event) => {
+    if (event.target.closest('a')) return;
+    const row = event.target.closest('.problem-row[data-primary-link]');
+    if (!row) return;
+    window.location.href = row.dataset.primaryLink;
   });
 };
 

@@ -1,0 +1,24 @@
+{
+  "name": "sheet-extract",
+  "version": "1.0.0",
+  "description": "Extracted problem data and static sheet browsers for:",
+  "main": "index.js",
+  "scripts": {
+    "excel": "node scripts/create-excel.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/khush2808/dsa-sheets.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/khush2808/dsa-sheets/issues"
+  },
+  "homepage": "https://github.com/khush2808/dsa-sheets#readme",
+  "dependencies": {
+    "write-excel-file": "^4.0.7"
+  }
+}
