@@ -4,6 +4,7 @@
   "description": "Extracted problem data and static sheet browsers for:",
   "main": "index.js",
   "scripts": {
+    "extract:tuf": "node scripts/extract-tuf-sheets.mjs",
     "excel": "node scripts/create-excel.mjs"
   },
   "repository": {

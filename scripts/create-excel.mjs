@@ -38,8 +38,49 @@ const writeWorkbook = async ({ filename, sheets }) => {
 };
 
 const striver = await readJson('strivers-a2z-problems.json');
-const striverSheet = {
-  sheetName: 'Striver A2Z',
+const tufHeaders = [
+  'Problem ID',
+  'Problem Name',
+  'Category',
+  'Subcategory',
+  'Difficulty',
+  'Article',
+  'LeetCode',
+  'YouTube',
+  'TUF Plus',
+  'Editorial'
+];
+
+const tufRows = (problems) =>
+  problems.map((problem) => [
+    problem.problem_id,
+    problem.problem_name,
+    problem.category_name,
+    problem.subcategory_name,
+    problem.difficulty,
+    problem.article,
+    problem.leetcode,
+    problem.youtube,
+    problem.plus,
+    problem.editorial
+  ]);
+
+const tufSheet = (sheetName, problems) => ({
+  sheetName,
+  headers: tufHeaders,
+  rows: tufRows(problems)
+});
+
+const striverSheet = tufSheet('Striver A2Z', striver.problems);
+const tufBlind75 = await readJson('blind-75-sheet-problems.json');
+const tufBlind75Sheet = tufSheet('Blind 75 Sheet', tufBlind75.problems);
+const sde = await readJson('sde-sheet-problems.json');
+const sdeSheet = tufSheet('SDE Sheet', sde.problems);
+const striver79 = await readJson('striver-79-sheet-problems.json');
+const striver79Sheet = tufSheet('Striver 79 Sheet', striver79.problems);
+
+const legacyStriverShape = {
+  ...striverSheet,
   headers: [
     'Problem ID',
     'Problem Name',
@@ -123,7 +164,10 @@ const neetcodeListSheets = [
   }
 }));
 
-await writeWorkbook({ filename: 'strivers-a2z-problems.xlsx', sheets: [striverSheet] });
+await writeWorkbook({ filename: 'strivers-a2z-problems.xlsx', sheets: [legacyStriverShape] });
+await writeWorkbook({ filename: 'blind-75-sheet-problems.xlsx', sheets: [tufBlind75Sheet] });
+await writeWorkbook({ filename: 'sde-sheet-problems.xlsx', sheets: [sdeSheet] });
+await writeWorkbook({ filename: 'striver-79-sheet-problems.xlsx', sheets: [striver79Sheet] });
 await writeWorkbook({ filename: 'neetcode-problems.xlsx', sheets: [neetcodeSheet] });
 for (const listSheet of neetcodeListSheets) {
   await writeWorkbook({ filename: listSheet.filename, sheets: [listSheet.sheet] });
@@ -131,7 +175,10 @@ for (const listSheet of neetcodeListSheets) {
 await writeWorkbook({
   filename: 'dsa-problem-lists.xlsx',
   sheets: [
-    striverSheet,
+    legacyStriverShape,
+    tufBlind75Sheet,
+    sdeSheet,
+    striver79Sheet,
     { ...neetcodeSheet, sheetName: 'NeetCode All' },
     ...neetcodeListSheets.map((listSheet) => listSheet.sheet)
   ]

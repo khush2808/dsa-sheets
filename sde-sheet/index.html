@@ -3,14 +3,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>NeetCode All</title>
+    <title>SDE Sheet</title>
     <link rel="stylesheet" href="../host/shared/app.css" />
   </head>
   <body>
     <div class="shell">
       <aside class="side">
         <div class="brand">
-          <div class="mark">NC</div>
+          <div class="mark">SDE</div>
           <div>
             <h1></h1>
             <p></p>
@@ -19,16 +19,16 @@
         <nav class="nav-links">
           <a href="../strivers-a2z-sheet/">Striver A2Z</a>
           <a href="../blind-75-sheet/">Blind 75 Sheet</a>
-          <a href="../sde-sheet/">SDE Sheet</a>
+          <a aria-current="page" href="../sde-sheet/">SDE Sheet</a>
           <a href="../striver-79-sheet/">Striver 79</a>
-          <a aria-current="page" href="../neetcode-all/">NeetCode All</a>
+          <a href="../neetcode-all/">NeetCode All</a>
           <a href="../neetcode-250/">NeetCode 250</a>
           <a href="../neetcode-150/">NeetCode 150</a>
           <a href="../blind-75/">NeetCode Blind 75</a>
-          <a class="download" href="../sheets/neetcode-problems.xlsx">Download Excel</a>
+          <a class="download" href="../sheets/sde-sheet-problems.xlsx">Download Excel</a>
           <a class="download" href="../sheets/dsa-problem-lists.xlsx">Download All</a>
         </nav>
-        <h2>Patterns</h2>
+        <h2>Sections</h2>
         <div class="category-list"></div>
       </aside>
       <main class="main">
@@ -60,7 +60,7 @@
         <section class="problem-area">
           <div class="problem-head">
             <span>Problem</span>
-            <span>Pattern</span>
+            <span>Section</span>
             <span>Level</span>
             <span class="result-count">0 shown</span>
           </div>
@@ -70,14 +70,14 @@
     </div>
     <script>
       window.SHEET_CONFIG = {
-        type: 'neetcode',
-        title: 'NeetCode All',
-        shortTitle: 'NeetCode All',
-        subtitle: '973 problems',
-        kicker: 'neetcode-all',
-        description: 'The full NeetCode catalog with pattern filters, list membership, LeetCode links, NeetCode pages, solutions, and videos.',
-        dataUrl: '../neetcode-problems.json',
-        excelUrl: '../sheets/neetcode-problems.xlsx'
+        type: 'striver',
+        title: 'SDE Sheet',
+        shortTitle: 'SDE Sheet',
+        subtitle: '191 problems',
+        kicker: 'sde-sheet',
+        description: 'Striver’s SDE Sheet with frequently asked interview problems, article links, LeetCode links, videos, Plus, and editorials.',
+        dataUrl: '../sde-sheet-problems.json',
+        excelUrl: '../sheets/sde-sheet-problems.xlsx'
       };
     </script>
     <script src="../host/shared/app.js?v=4"></script>
