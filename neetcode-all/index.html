@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>NeetCode All</title>
-    <link rel="stylesheet" href="../assets/app.css?v=8" />
+    <link rel="stylesheet" href="../assets/app.css?v=9" />
   </head>
   <body>
     <div class="shell">
@@ -17,7 +17,10 @@
             <p></p>
           </div>
         </div>
-          <button id="themeToggle" class="icon-button" type="button" aria-label="Switch to dark mode" title="Switch to dark mode" aria-pressed="false"></button>
+          <button id="themeToggle" class="icon-button" type="button" aria-label="Switch to dark mode" title="Switch to dark mode" aria-pressed="false">
+            <svg class="theme-icon moon-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3 6.5 6.5 0 0 0 21 12.8Z"></path></svg>
+            <svg class="theme-icon sun-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path></svg>
+          </button>
         </div>
         <nav class="nav-links">
           <a href="../strivers-a2z-sheet/">Striver A2Z</a>
@@ -45,9 +48,7 @@
           <aside class="summary">
             <div class="stat-grid"></div>
             <div class="summary-actions">
-              <a class="download primary" href="">Download Excel</a>
-              <a class="download" href="../sheets/dsa-problem-lists.xlsx">Download All</a>
-              <button id="randomButton" class="cta-button" type="button">Random Pick</button>
+              <a class="download" href="../sheets/dsa-problem-lists.xlsx">Download</a>
             </div>
           </aside>
         </section>
@@ -67,6 +68,7 @@
               <label><input id="includePro" type="checkbox" data-label="Pro" checked />Pro questions</label>
             </div>
           </details>
+          <button id="randomButton" type="button">Random Pick</button>
         </section>
         <section class="problem-area">
           <div class="problem-head">
@@ -87,10 +89,9 @@
         subtitle: '973 problems',
         kicker: 'neetcode-all',
         description: 'The full NeetCode catalog with pattern filters, list membership, LeetCode links, NeetCode pages, solutions, and videos.',
-        dataUrl: '../data/neetcode-problems.json',
-        excelUrl: '../sheets/neetcode-problems.xlsx'
+        dataUrl: '../data/neetcode-problems.json'
       };
     </script>
-    <script src="../assets/app.js?v=8"></script>
+    <script src="../assets/app.js?v=9"></script>
   </body>
 </html>

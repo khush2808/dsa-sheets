@@ -249,7 +249,6 @@ const init = async () => {
   $('.eyebrow').textContent = config.kicker;
   $('.hero h2').textContent = config.title;
   $('.hero p').textContent = config.description;
-  $('.download').href = config.excelUrl;
 
   renderFilters();
   renderCanvas();
