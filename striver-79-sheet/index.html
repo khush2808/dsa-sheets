@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Striver 79 Sheet</title>
-    <link rel="stylesheet" href="../assets/app.css?v=5" />
+    <link rel="stylesheet" href="../assets/app.css?v=6" />
   </head>
   <body>
     <div class="shell">
@@ -48,13 +48,22 @@
         <section class="toolbar">
           <input id="search" type="search" placeholder="Search problems" />
           <select id="categoryFilter"></select>
-          <fieldset id="difficultyFilter" class="difficulty-checklist">
-            <legend>Difficulty</legend>
-            <label><input type="checkbox" value="easy" checked />Easy</label>
-            <label><input type="checkbox" value="medium" checked />Medium</label>
-            <label><input type="checkbox" value="hard" checked />Hard</label>
-          </fieldset>
+          <details id="difficultyFilter" class="filter-dropdown">
+            <summary><span>Easy, Medium, Hard</span></summary>
+            <div class="filter-menu">
+              <label><input type="checkbox" value="easy" data-label="Easy" checked />Easy</label>
+              <label><input type="checkbox" value="medium" data-label="Medium" checked />Medium</label>
+              <label><input type="checkbox" value="hard" data-label="Hard" checked />Hard</label>
+            </div>
+          </details>
           <select id="listFilter"></select>
+          <details id="proFilter" class="filter-dropdown">
+            <summary><span>Pro</span></summary>
+            <div class="filter-menu">
+              <label><input id="includePro" type="checkbox" data-label="Pro" checked />Pro questions</label>
+            </div>
+          </details>
+          <button id="themeToggle" type="button">Dark</button>
           <button id="randomButton" type="button">Random</button>
         </section>
         <section class="problem-area">
@@ -80,6 +89,6 @@
         excelUrl: '../sheets/striver-79-sheet-problems.xlsx'
       };
     </script>
-    <script src="../assets/app.js?v=5"></script>
+    <script src="../assets/app.js?v=6"></script>
   </body>
 </html>

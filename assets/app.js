@@ -2,7 +2,9 @@ const state = {
   data: null,
   category: 'all',
   difficulties: ['easy', 'medium', 'hard'],
+  includePro: true,
   list: window.SHEET_CONFIG.initialList || 'all',
+  theme: localStorage.getItem('theme') || 'light',
   query: ''
 };
 
@@ -42,6 +44,9 @@ const isInList = (problem, list) => {
   return Boolean(problem.list_membership?.[list]);
 };
 
+const allowsPro = (problem) =>
+  config.type !== 'neetcode' || state.includePro || !problem.list_membership?.pro;
+
 const linkSet = (problem) => [
   ['Article', articleLink(problem)],
   ['YouTube', problem.youtube],
@@ -66,12 +71,36 @@ const filteredProblems = () =>
       (state.category === 'all' || slug(groupName(problem)) === state.category) &&
       state.difficulties.includes(difficultyKey(problem.difficulty)) &&
       isInList(problem, state.list) &&
+      allowsPro(problem) &&
       haystack.includes(state.query.toLowerCase())
     );
   });
 
 const routeProblems = () =>
-  state.data.problems.filter((problem) => isInList(problem, config.initialList || 'all'));
+  state.data.problems.filter((problem) => isInList(problem, config.initialList || 'all') && allowsPro(problem));
+
+const updateDropdownSummary = (id, fallback) => {
+  const dropdown = $(`#${id}`);
+  if (!dropdown) return;
+  const summary = dropdown.querySelector('summary span');
+  const checked = [...dropdown.querySelectorAll('input[type="checkbox"]:checked')].map((checkbox) => checkbox.dataset.label || checkbox.value);
+  summary.textContent = checked.length ? checked.join(', ') : fallback;
+};
+
+const renderFilterSummaries = () => {
+  updateDropdownSummary('difficultyFilter', 'No difficulties');
+  updateDropdownSummary('proFilter', 'No Pro questions');
+};
+
+const applyTheme = () => {
+  document.documentElement.dataset.theme = state.theme;
+  localStorage.setItem('theme', state.theme);
+  const button = $('#themeToggle');
+  if (button) {
+    button.textContent = state.theme === 'dark' ? 'Light' : 'Dark';
+    button.setAttribute('aria-pressed', String(state.theme === 'dark'));
+  }
+};
 
 const renderStats = () => {
   const problems = filteredProblems();
@@ -176,13 +205,17 @@ const renderFilters = () => {
     if (config.lockList) {
       $('#listFilter').hidden = true;
     }
+    $('#proFilter').hidden = false;
   } else {
     $('#listFilter').hidden = true;
+    $('#proFilter').hidden = true;
   }
 
   document.querySelectorAll('#difficultyFilter input[type="checkbox"]').forEach((checkbox) => {
     checkbox.checked = state.difficulties.includes(checkbox.value);
   });
+  $('#includePro').checked = state.includePro;
+  renderFilterSummaries();
 };
 
 const renderCanvas = () => {
@@ -229,6 +262,7 @@ const rerender = () => {
 };
 
 const init = async () => {
+  applyTheme();
   state.data = await fetch(config.dataUrl).then((response) => response.json());
   document.title = config.title;
   $('.brand h1').textContent = config.shortTitle;
@@ -254,11 +288,21 @@ const init = async () => {
     state.difficulties = [...document.querySelectorAll('#difficultyFilter input[type="checkbox"]:checked')].map(
       (checkbox) => checkbox.value
     );
+    renderFilterSummaries();
+    rerender();
+  });
+  $('#proFilter').addEventListener('change', () => {
+    state.includePro = $('#includePro').checked;
+    renderFilterSummaries();
     rerender();
   });
   $('#listFilter').addEventListener('change', (event) => {
     state.list = event.target.value;
     rerender();
+  });
+  $('#themeToggle').addEventListener('click', () => {
+    state.theme = state.theme === 'dark' ? 'light' : 'dark';
+    applyTheme();
   });
   $('#randomButton').addEventListener('click', () => {
     const problems = filteredProblems();
