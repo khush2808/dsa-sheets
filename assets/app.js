@@ -3,7 +3,6 @@ const state = {
   category: 'all',
   difficulties: ['easy', 'medium', 'hard'],
   includePro: true,
-  list: window.SHEET_CONFIG.initialList || 'all',
   theme: localStorage.getItem('theme') || 'light',
   query: ''
 };
@@ -70,7 +69,7 @@ const filteredProblems = () =>
     return (
       (state.category === 'all' || slug(groupName(problem)) === state.category) &&
       state.difficulties.includes(difficultyKey(problem.difficulty)) &&
-      isInList(problem, state.list) &&
+      isInList(problem, config.initialList || 'all') &&
       allowsPro(problem) &&
       haystack.includes(state.query.toLowerCase())
     );
@@ -193,23 +192,7 @@ const renderFilters = () => {
     ...groups.map((group) => `<option value="${slug(group)}">${escapeHtml(group)}</option>`)
   ].join('');
 
-  if (config.type === 'neetcode') {
-    $('#listFilter').innerHTML = `
-      <option value="all">All lists</option>
-      <option value="blind75">Blind 75</option>
-      <option value="neetcode150">NeetCode 150</option>
-      <option value="neetcode250">NeetCode 250</option>
-      <option value="premium_algo100">Algo 100</option>
-      <option value="pro">Pro</option>`;
-    $('#listFilter').value = state.list;
-    if (config.lockList) {
-      $('#listFilter').hidden = true;
-    }
-    $('#proFilter').hidden = false;
-  } else {
-    $('#listFilter').hidden = true;
-    $('#proFilter').hidden = true;
-  }
+  $('#proFilter').hidden = config.type !== 'neetcode';
 
   document.querySelectorAll('#difficultyFilter input[type="checkbox"]').forEach((checkbox) => {
     checkbox.checked = state.difficulties.includes(checkbox.value);
@@ -294,10 +277,6 @@ const init = async () => {
   $('#proFilter').addEventListener('change', () => {
     state.includePro = $('#includePro').checked;
     renderFilterSummaries();
-    rerender();
-  });
-  $('#listFilter').addEventListener('change', (event) => {
-    state.list = event.target.value;
     rerender();
   });
   $('#themeToggle').addEventListener('click', () => {

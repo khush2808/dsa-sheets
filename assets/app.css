@@ -269,7 +269,7 @@ a {
 
 .toolbar {
   display: grid;
-  grid-template-columns: minmax(12rem, 1fr) minmax(8rem, 12rem) minmax(10rem, 13rem) minmax(8rem, 12rem) minmax(8rem, 10rem) auto auto;
+  grid-template-columns: minmax(12rem, 1fr) minmax(8rem, 12rem) minmax(10rem, 13rem) minmax(8rem, 10rem) auto auto;
   gap: 0.65rem;
   border: 1px solid var(--line);
   border-radius: 0.5rem;
