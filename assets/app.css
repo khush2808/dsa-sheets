@@ -239,7 +239,7 @@ a {
 
 .toolbar {
   display: grid;
-  grid-template-columns: minmax(12rem, 1fr) repeat(3, minmax(8rem, 12rem)) auto;
+  grid-template-columns: minmax(12rem, 1fr) minmax(8rem, 12rem) minmax(14rem, 20rem) minmax(8rem, 12rem) auto;
   gap: 0.65rem;
   border: 1px solid var(--line);
   border-radius: 0.5rem;
@@ -260,6 +260,56 @@ a {
   color: var(--ink);
   padding: 0 0.75rem;
   font: inherit;
+}
+
+.difficulty-checklist {
+  min-width: 0;
+  min-height: 2.6rem;
+  border: 1px solid var(--line);
+  border-radius: 0.45rem;
+  background: var(--surface);
+  padding: 0.35rem;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.difficulty-checklist legend {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.difficulty-checklist label {
+  min-height: 1.75rem;
+  border: 1px solid transparent;
+  border-radius: 0.35rem;
+  padding: 0 0.45rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.difficulty-checklist input {
+  width: 0.9rem;
+  height: 0.9rem;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.difficulty-checklist label:has(input:checked) {
+  border-color: rgba(15, 139, 141, 0.32);
+  background: var(--surface-2);
+  color: var(--ink);
 }
 
 .toolbar button {

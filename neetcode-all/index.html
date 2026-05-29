@@ -48,12 +48,12 @@
         <section class="toolbar">
           <input id="search" type="search" placeholder="Search problems" />
           <select id="categoryFilter"></select>
-          <select id="difficultyFilter">
-            <option value="all">All difficulties</option>
-            <option value="Easy">Easy</option>
-            <option value="Medium">Medium</option>
-            <option value="Hard">Hard</option>
-          </select>
+          <fieldset id="difficultyFilter" class="difficulty-checklist">
+            <legend>Difficulty</legend>
+            <label><input type="checkbox" value="easy" checked />Easy</label>
+            <label><input type="checkbox" value="medium" checked />Medium</label>
+            <label><input type="checkbox" value="hard" checked />Hard</label>
+          </fieldset>
           <select id="listFilter"></select>
           <button id="randomButton" type="button">Random</button>
         </section>

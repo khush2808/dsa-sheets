@@ -1,7 +1,7 @@
 const state = {
   data: null,
   category: 'all',
-  difficulty: 'all',
+  difficulties: ['easy', 'medium', 'hard'],
   list: window.SHEET_CONFIG.initialList || 'all',
   query: ''
 };
@@ -33,6 +33,8 @@ const groupName = (problem) =>
 const subName = (problem) =>
   config.type === 'striver' ? problem.subcategory_name : problem.code;
 
+const difficultyKey = (value) => String(value ?? '').toLowerCase();
+
 const articleLink = (problem) => problem.article || problem.solution;
 
 const isInList = (problem, list) => {
@@ -62,7 +64,7 @@ const filteredProblems = () =>
 
     return (
       (state.category === 'all' || slug(groupName(problem)) === state.category) &&
-      (state.difficulty === 'all' || problem.difficulty === state.difficulty) &&
+      state.difficulties.includes(difficultyKey(problem.difficulty)) &&
       isInList(problem, state.list) &&
       haystack.includes(state.query.toLowerCase())
     );
@@ -73,9 +75,9 @@ const routeProblems = () =>
 
 const renderStats = () => {
   const problems = filteredProblems();
-  const easy = problems.filter((problem) => problem.difficulty === 'Easy').length;
-  const medium = problems.filter((problem) => problem.difficulty === 'Medium').length;
-  const hard = problems.filter((problem) => problem.difficulty === 'Hard').length;
+  const easy = problems.filter((problem) => difficultyKey(problem.difficulty) === 'easy').length;
+  const medium = problems.filter((problem) => difficultyKey(problem.difficulty) === 'medium').length;
+  const hard = problems.filter((problem) => difficultyKey(problem.difficulty) === 'hard').length;
   $('.stat-grid').innerHTML = [
     ['Problems', problems.length],
     ['Easy', easy],
@@ -177,6 +179,10 @@ const renderFilters = () => {
   } else {
     $('#listFilter').hidden = true;
   }
+
+  document.querySelectorAll('#difficultyFilter input[type="checkbox"]').forEach((checkbox) => {
+    checkbox.checked = state.difficulties.includes(checkbox.value);
+  });
 };
 
 const renderCanvas = () => {
@@ -244,8 +250,10 @@ const init = async () => {
     state.category = event.target.value;
     rerender();
   });
-  $('#difficultyFilter').addEventListener('change', (event) => {
-    state.difficulty = event.target.value;
+  $('#difficultyFilter').addEventListener('change', () => {
+    state.difficulties = [...document.querySelectorAll('#difficultyFilter input[type="checkbox"]:checked')].map(
+      (checkbox) => checkbox.value
+    );
     rerender();
   });
   $('#listFilter').addEventListener('change', (event) => {
