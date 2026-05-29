@@ -96,7 +96,9 @@ const applyTheme = () => {
   localStorage.setItem('theme', state.theme);
   const button = $('#themeToggle');
   if (button) {
-    button.textContent = state.theme === 'dark' ? 'Light' : 'Dark';
+    const label = state.theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+    button.setAttribute('aria-label', label);
+    button.setAttribute('title', label);
     button.setAttribute('aria-pressed', String(state.theme === 'dark'));
   }
 };
@@ -186,12 +188,6 @@ const renderRows = () => {
 };
 
 const renderFilters = () => {
-  const groups = [...new Set(state.data.problems.map(groupName))];
-  $('#categoryFilter').innerHTML = [
-    '<option value="all">All categories</option>',
-    ...groups.map((group) => `<option value="${slug(group)}">${escapeHtml(group)}</option>`)
-  ].join('');
-
   $('#proFilter').hidden = config.type !== 'neetcode';
 
   document.querySelectorAll('#difficultyFilter input[type="checkbox"]').forEach((checkbox) => {
@@ -263,10 +259,6 @@ const init = async () => {
     state.query = event.target.value;
     rerender();
   });
-  $('#categoryFilter').addEventListener('change', (event) => {
-    state.category = event.target.value;
-    rerender();
-  });
   $('#difficultyFilter').addEventListener('change', () => {
     state.difficulties = [...document.querySelectorAll('#difficultyFilter input[type="checkbox"]:checked')].map(
       (checkbox) => checkbox.value
@@ -295,7 +287,6 @@ const init = async () => {
     const button = event.target.closest('button[data-category]');
     if (!button) return;
     state.category = button.dataset.category;
-    $('#categoryFilter').value = state.category;
     rerender();
   });
   $('.problem-list').addEventListener('click', (event) => {

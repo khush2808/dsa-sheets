@@ -4,17 +4,20 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>NeetCode All</title>
-    <link rel="stylesheet" href="../assets/app.css?v=7" />
+    <link rel="stylesheet" href="../assets/app.css?v=8" />
   </head>
   <body>
     <div class="shell">
       <aside class="side">
         <div class="brand">
+          <div class="brand-main">
           <div class="mark">NC</div>
           <div>
             <h1></h1>
             <p></p>
           </div>
+        </div>
+          <button id="themeToggle" class="icon-button" type="button" aria-label="Switch to dark mode" title="Switch to dark mode" aria-pressed="false"></button>
         </div>
         <nav class="nav-links">
           <a href="../strivers-a2z-sheet/">Striver A2Z</a>
@@ -25,8 +28,6 @@
           <a href="../neetcode-250/">NeetCode 250</a>
           <a href="../neetcode-150/">NeetCode 150</a>
           <a href="../blind-75/">NeetCode Blind 75</a>
-          <a class="download" href="../sheets/neetcode-problems.xlsx">Download Excel</a>
-          <a class="download" href="../sheets/dsa-problem-lists.xlsx">Download All</a>
         </nav>
         <h2>Patterns</h2>
         <div class="category-list"></div>
@@ -43,11 +44,15 @@
           </div>
           <aside class="summary">
             <div class="stat-grid"></div>
+            <div class="summary-actions">
+              <a class="download primary" href="">Download Excel</a>
+              <a class="download" href="../sheets/dsa-problem-lists.xlsx">Download All</a>
+              <button id="randomButton" class="cta-button" type="button">Random Pick</button>
+            </div>
           </aside>
         </section>
         <section class="toolbar">
           <input id="search" type="search" placeholder="Search problems" />
-          <select id="categoryFilter"></select>
           <details id="difficultyFilter" class="filter-dropdown">
             <summary><span>Easy, Medium, Hard</span></summary>
             <div class="filter-menu">
@@ -62,8 +67,6 @@
               <label><input id="includePro" type="checkbox" data-label="Pro" checked />Pro questions</label>
             </div>
           </details>
-          <button id="themeToggle" type="button">Dark</button>
-          <button id="randomButton" type="button">Random</button>
         </section>
         <section class="problem-area">
           <div class="problem-head">
@@ -88,6 +91,6 @@
         excelUrl: '../sheets/neetcode-problems.xlsx'
       };
     </script>
-    <script src="../assets/app.js?v=7"></script>
+    <script src="../assets/app.js?v=8"></script>
   </body>
 </html>
