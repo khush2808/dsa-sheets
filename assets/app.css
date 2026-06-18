@@ -500,6 +500,88 @@ a {
   border-bottom: 1px solid var(--line);
 }
 
+.problem-section.section-complete .section-card {
+  position: relative;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--section-bg), var(--ok) 8%);
+}
+
+.problem-section.section-complete .section-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0.28rem;
+  background: var(--ok);
+}
+
+.problem-section.section-just-completed .section-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    color-mix(in srgb, var(--ok), transparent 78%) 34%,
+    color-mix(in srgb, #fff, transparent 70%) 48%,
+    color-mix(in srgb, var(--ok), transparent 82%) 62%,
+    transparent 100%
+  );
+  transform: translateX(-115%);
+  animation: sectionCompleteSweep 0.72s ease-out forwards;
+  pointer-events: none;
+}
+
+.problem-section.section-complete .section-status > span,
+.problem-section.section-complete .section-done-control {
+  background: color-mix(in srgb, var(--ok), var(--section-bg) 18%);
+  border-color: color-mix(in srgb, var(--ok), var(--section-ink) 34%);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok), transparent 78%);
+}
+
+.problem-section.section-just-completed .section-done-control,
+.problem-section.section-just-completed .section-status > span {
+  animation: sectionCompletePop 0.52s cubic-bezier(0.2, 0.9, 0.24, 1.15);
+}
+
+@keyframes sectionCompleteSweep {
+  0% {
+    transform: translateX(-115%);
+    opacity: 0;
+  }
+
+  18% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateX(115%);
+    opacity: 0;
+  }
+}
+
+@keyframes sectionCompletePop {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  42% {
+    transform: scale(1.045);
+  }
+
+  68% {
+    transform: scale(0.992);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .problem-section.section-just-completed .section-card::after,
+  .problem-section.section-just-completed .section-done-control,
+  .problem-section.section-just-completed .section-status > span {
+    animation: none;
+  }
+}
+
 .problem-section:last-child {
   border-bottom: 0;
 }

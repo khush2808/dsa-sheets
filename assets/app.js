@@ -7,7 +7,8 @@ const state = {
   query: '',
   linkTarget: localStorage.getItem('dsaSheetLinkTarget') || 'same',
   progress: {},
-  openNotes: new Set()
+  openNotes: new Set(),
+  celebratingSections: new Set()
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -181,6 +182,17 @@ const sectionProgress = (problems) => {
   };
 };
 
+const sectionKey = (name) => slug(name || 'uncategorized');
+
+const celebrateSection = (key) => {
+  state.celebratingSections.add(key);
+  setTimeout(() => {
+    state.celebratingSections.delete(key);
+    renderRows();
+    applySectionCheckboxStates();
+  }, 900);
+};
+
 const applySectionCheckboxStates = () => {
   document.querySelectorAll('input[data-section-toggle]').forEach((input) => {
     input.indeterminate = input.dataset.sectionPartial === 'true';
@@ -327,6 +339,7 @@ const renderRows = () => {
   $('.problem-list').innerHTML =
     [...groupedProblems.entries()]
       .map(([name, groupProblems]) => {
+        const key = sectionKey(name);
         const groupProgress = sectionProgress(groupProblems);
         const groupProblemIds = groupProblems.map(problemProgressId).join(' ');
         const rows = groupProblems
@@ -360,7 +373,7 @@ const renderRows = () => {
           })
           .join('');
 
-        return `<section class="problem-section ${groupProgress.isComplete ? 'section-complete' : ''}">
+        return `<section class="problem-section ${groupProgress.isComplete ? 'section-complete' : ''} ${state.celebratingSections.has(key) ? 'section-just-completed' : ''}" data-section-key="${escapeAttr(key)}">
           <header class="section-card">
             <div>
               <h3>${escapeHtml(name)}</h3>
@@ -501,6 +514,9 @@ const init = async () => {
   $('.problem-list').addEventListener('change', async (event) => {
     const sectionInput = event.target.closest('input[data-section-toggle]');
     if (sectionInput) {
+      const section = sectionInput.closest('.problem-section');
+      const sectionWasComplete = section?.classList.contains('section-complete');
+      const sectionKey = section?.dataset.sectionKey;
       const problemIds = sectionInput.dataset.problemIds.split(' ').filter(Boolean);
       await updateManyProblemProgress(
         problemIds.map((problemId) => ({
@@ -508,13 +524,28 @@ const init = async () => {
           value: { completed: sectionInput.checked }
         }))
       );
+      if (sectionInput.checked && !sectionWasComplete && sectionKey) {
+        celebrateSection(sectionKey);
+      }
       rerender();
       return;
     }
 
     const input = event.target.closest('input[data-progress-field="completed"]');
     if (!input) return;
+    const section = input.closest('.problem-section');
+    const sectionWasComplete = section?.classList.contains('section-complete');
+    const sectionKey = section?.dataset.sectionKey;
     await updateProblemProgress(input.dataset.progressId, { completed: input.checked });
+    if (!sectionWasComplete && sectionKey) {
+      const problemIds = section
+        ? [...section.querySelectorAll('input[data-progress-field="completed"]')].map((checkbox) => checkbox.dataset.progressId)
+        : [];
+      const isNowComplete = problemIds.length > 0 && problemIds.every((problemId) => state.progress[problemId]?.completed);
+      if (isNowComplete) {
+        celebrateSection(sectionKey);
+      }
+    }
     rerender();
   });
   $('.problem-list').addEventListener('click', async (event) => {
