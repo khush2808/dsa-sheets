@@ -35,6 +35,9 @@ const subName = (problem) =>
 
 const articleLink = (problem) => problem.article || problem.solution;
 
+const googleSearchLink = (problem) =>
+  `https://www.google.com/search?q=${encodeURIComponent(`${problem.problem_name} dsa problem`)}`;
+
 const isInList = (problem, list) => {
   if (list === 'all') return true;
   return Boolean(problem.list_membership?.[list]);
@@ -44,6 +47,7 @@ const linkSet = (problem) => [
   ['Article', articleLink(problem)],
   ['YouTube', problem.youtube],
   ['LeetCode', problem.leetcode],
+  ['Google', googleSearchLink(problem)],
   ['Other', problem.link]
 ];
 
