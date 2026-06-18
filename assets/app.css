@@ -755,26 +755,15 @@ a {
 
 .note-editor {
   display: grid;
-  gap: 0.35rem;
-}
-
-.note-editor-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
-.note-editor-head > span {
-  color: var(--muted);
-  font-size: 0.72rem;
-  font-weight: 800;
-  text-transform: uppercase;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem;
+  align-items: start;
 }
 
 .delete-note-button {
   width: 1.8rem;
   height: 1.8rem;
+  margin-top: 0.1rem;
   border: 1px solid var(--line);
   border-radius: 0.4rem;
   background: var(--surface);

@@ -129,13 +129,10 @@ const renderNotesPanel = (problemId, progress) => {
     ? notes
         .map(
           (note) => `<div class="note-editor">
-            <div class="note-editor-head">
-              <span>Note</span>
-              <button class="delete-note-button" type="button" data-note-delete="${escapeAttr(problemId)}" data-note-id="${escapeAttr(note.id)}" title="Delete note" aria-label="Delete note">
-                <span aria-hidden="true"></span>
-              </button>
-            </div>
             <textarea data-note-edit="${escapeAttr(problemId)}" data-note-id="${escapeAttr(note.id)}" rows="2">${escapeHtml(note.text)}</textarea>
+            <button class="delete-note-button" type="button" data-note-delete="${escapeAttr(problemId)}" data-note-id="${escapeAttr(note.id)}" title="Delete note" aria-label="Delete note">
+              <span aria-hidden="true"></span>
+            </button>
           </div>`
         )
         .join('')
