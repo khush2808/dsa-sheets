@@ -4,7 +4,8 @@ const state = {
   difficulty: 'all',
   list: window.SHEET_CONFIG.initialList || 'all',
   query: '',
-  linkTarget: localStorage.getItem('dsaSheetLinkTarget') || 'same'
+  linkTarget: localStorage.getItem('dsaSheetLinkTarget') || 'same',
+  progress: {}
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -30,6 +31,55 @@ const slug = (value) =>
     .replace(/&/g, 'and')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
+
+const problemProgressId = (problem) =>
+  [config.type, problem.problem_id || problem.code || problem.leetcode_slug || slug(problem.problem_name)].join(':');
+
+const createLocalProgressAdapter = () => {
+  const storageKey = 'dsaSheetProblemProgress:v1';
+
+  const read = () => {
+    try {
+      return JSON.parse(localStorage.getItem(storageKey) || '{}');
+    } catch {
+      return {};
+    }
+  };
+
+  const write = (records) => {
+    localStorage.setItem(storageKey, JSON.stringify(records));
+  };
+
+  return {
+    async loadAll() {
+      return read();
+    },
+    async saveProblem(problemId, value) {
+      const records = read();
+      records[problemId] = {
+        ...records[problemId],
+        ...value,
+        updatedAt: new Date().toISOString()
+      };
+      if (!records[problemId].completed && !records[problemId].notes) {
+        delete records[problemId];
+      }
+      write(records);
+      return records;
+    }
+  };
+};
+
+const createProgressRepository = (adapter) => ({
+  loadAll: () => adapter.loadAll(),
+  saveProblem: (problemId, value) => adapter.saveProblem(problemId, value)
+});
+
+const progressRepository = createProgressRepository(createLocalProgressAdapter());
+
+const updateProblemProgress = async (problemId, value) => {
+  state.progress = await progressRepository.saveProblem(problemId, value);
+};
 
 const groupName = (problem) =>
   config.type === 'striver' ? problem.category_name : problem.pattern;
@@ -143,12 +193,18 @@ const renderRows = () => {
         const rows = groupProblems
           .map((problem) => {
             const mainHref = primaryLink(problem);
+            const problemId = problemProgressId(problem);
+            const progress = state.progress[problemId] || {};
             const links = linkSet(problem)
               .filter(([, href]) => href)
               .map(([label, href]) => `<a href="${escapeAttr(href)}"${linkTargetAttrs()}>${escapeHtml(label)}</a>`)
               .join('');
 
             return `<article class="problem-row ${mainHref ? 'clickable' : ''}" ${mainHref ? `data-primary-link="${escapeAttr(mainHref)}"` : ''}>
+              <label class="done-control" title="Mark complete">
+                <input type="checkbox" data-progress-id="${escapeAttr(problemId)}" data-progress-field="completed" ${progress.completed ? 'checked' : ''} />
+                <span></span>
+              </label>
               <div class="problem-title">
                 <div class="problem-line">
                   ${
@@ -159,6 +215,7 @@ const renderRows = () => {
                   <span class="pill ${String(problem.difficulty).toLowerCase()}">${escapeHtml(problem.difficulty)}</span>
                 </div>
                 <span>${escapeHtml(subName(problem) || '')}</span>
+                <textarea class="problem-note" data-progress-id="${escapeAttr(problemId)}" data-progress-field="notes" rows="2" placeholder="Notes">${escapeHtml(progress.notes || '')}</textarea>
               </div>
               <div class="links">${links}</div>
             </article>`;
@@ -248,6 +305,7 @@ const rerender = () => {
 
 const init = async () => {
   state.data = await fetch(config.dataUrl).then((response) => response.json());
+  state.progress = await progressRepository.loadAll();
   document.title = config.title;
   $('.brand h1').textContent = config.shortTitle;
   $('.brand p').textContent = config.subtitle;
@@ -298,7 +356,7 @@ const init = async () => {
     rerender();
   });
   $('.problem-list').addEventListener('click', (event) => {
-    if (event.target.closest('a')) return;
+    if (event.target.closest('a, button, input, textarea, select, label')) return;
     const row = event.target.closest('.problem-row[data-primary-link]');
     if (!row) return;
     if (state.linkTarget === 'new') {
@@ -306,6 +364,16 @@ const init = async () => {
       return;
     }
     window.location.href = row.dataset.primaryLink;
+  });
+  $('.problem-list').addEventListener('change', async (event) => {
+    const input = event.target.closest('input[data-progress-field="completed"]');
+    if (!input) return;
+    await updateProblemProgress(input.dataset.progressId, { completed: input.checked });
+  });
+  $('.problem-list').addEventListener('input', async (event) => {
+    const textarea = event.target.closest('textarea[data-progress-field="notes"]');
+    if (!textarea) return;
+    await updateProblemProgress(textarea.dataset.progressId, { notes: textarea.value.trim() });
   });
 };
 
