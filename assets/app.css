@@ -584,11 +584,67 @@ a {
   gap: 0.35rem;
 }
 
-.note-editor span {
+.note-editor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.note-editor-head > span {
   color: var(--muted);
   font-size: 0.72rem;
   font-weight: 800;
   text-transform: uppercase;
+}
+
+.delete-note-button {
+  width: 1.8rem;
+  height: 1.8rem;
+  border: 1px solid var(--line);
+  border-radius: 0.4rem;
+  background: var(--surface);
+  color: var(--hard);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.delete-note-button:hover {
+  border-color: rgba(201, 56, 74, 0.45);
+  background: rgba(209, 73, 91, 0.1);
+}
+
+.delete-note-button span {
+  position: relative;
+  width: 0.8rem;
+  height: 0.85rem;
+  border: 1.5px solid currentColor;
+  border-top: 0;
+  border-radius: 0 0 0.16rem 0.16rem;
+}
+
+.delete-note-button span::before,
+.delete-note-button span::after {
+  content: "";
+  position: absolute;
+  background: currentColor;
+}
+
+.delete-note-button span::before {
+  top: -0.28rem;
+  left: -0.08rem;
+  width: 0.96rem;
+  height: 0.12rem;
+  border-radius: 999px;
+}
+
+.delete-note-button span::after {
+  top: -0.45rem;
+  left: 0.22rem;
+  width: 0.34rem;
+  height: 0.12rem;
+  border-radius: 999px;
 }
 
 .note-editor textarea {

@@ -127,10 +127,15 @@ const renderNotesPanel = (problemId, progress) => {
   const rows = notes.length
     ? notes
         .map(
-          (note) => `<label class="note-editor">
-            <span>Note</span>
+          (note) => `<div class="note-editor">
+            <div class="note-editor-head">
+              <span>Note</span>
+              <button class="delete-note-button" type="button" data-note-delete="${escapeAttr(problemId)}" data-note-id="${escapeAttr(note.id)}" title="Delete note" aria-label="Delete note">
+                <span aria-hidden="true"></span>
+              </button>
+            </div>
             <textarea data-note-edit="${escapeAttr(problemId)}" data-note-id="${escapeAttr(note.id)}" rows="2">${escapeHtml(note.text)}</textarea>
-          </label>`
+          </div>`
         )
         .join('')
     : '<p class="notes-empty">No notes yet.</p>';
@@ -447,23 +452,35 @@ const init = async () => {
     }
 
     const addButton = event.target.closest('button[data-note-add]');
-    if (!addButton) return;
-    const problemId = addButton.dataset.noteAdd;
+    if (addButton) {
+      const problemId = addButton.dataset.noteAdd;
+      const progress = state.progress[problemId] || {};
+      const now = new Date().toISOString();
+      const notes = [
+        ...normalizeNotes(progress),
+        {
+          id: `note-${Date.now()}`,
+          text: '',
+          createdAt: now,
+          updatedAt: now
+        }
+      ];
+      await updateProblemProgress(problemId, { notes });
+      state.openNotes.add(problemId);
+      rerender();
+      $(`textarea[data-note-id="${notes[notes.length - 1].id}"]`)?.focus();
+      return;
+    }
+
+    const deleteButton = event.target.closest('button[data-note-delete]');
+    if (!deleteButton) return;
+    const problemId = deleteButton.dataset.noteDelete;
+    const noteId = deleteButton.dataset.noteId;
     const progress = state.progress[problemId] || {};
-    const now = new Date().toISOString();
-    const notes = [
-      ...normalizeNotes(progress),
-      {
-        id: `note-${Date.now()}`,
-        text: '',
-        createdAt: now,
-        updatedAt: now
-      }
-    ];
+    const notes = normalizeNotes(progress).filter((note) => note.id !== noteId);
     await updateProblemProgress(problemId, { notes });
     state.openNotes.add(problemId);
     rerender();
-    $(`textarea[data-note-id="${notes[notes.length - 1].id}"]`)?.focus();
   });
   $('.problem-list').addEventListener('input', async (event) => {
     const textarea = event.target.closest('textarea[data-note-edit]');
