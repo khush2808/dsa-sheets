@@ -4,17 +4,23 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Striver A2Z Sheet</title>
-    <link rel="stylesheet" href="../assets/app.css?v=8" />
+    <link rel="stylesheet" href="../assets/app.css?v=10" />
   </head>
   <body>
     <div class="shell">
       <aside class="side">
         <div class="brand">
+          <div class="brand-main">
           <div class="mark">A2Z</div>
           <div>
             <h1></h1>
             <p></p>
           </div>
+        </div>
+          <button id="themeToggle" class="icon-button" type="button" aria-label="Switch to dark mode" title="Switch to dark mode" aria-pressed="false">
+            <svg class="theme-icon moon-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3 6.5 6.5 0 0 0 21 12.8Z"></path></svg>
+            <svg class="theme-icon sun-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path></svg>
+          </button>
         </div>
         <nav class="nav-links">
           <a aria-current="page" href="../strivers-a2z-sheet/">Striver A2Z</a>
@@ -25,8 +31,6 @@
           <a href="../neetcode-250/">NeetCode 250</a>
           <a href="../neetcode-150/">NeetCode 150</a>
           <a href="../blind-75/">NeetCode Blind 75</a>
-          <a class="download" href="../sheets/strivers-a2z-problems.xlsx">Download Excel</a>
-          <a class="download" href="../sheets/dsa-problem-lists.xlsx">Download All</a>
         </nav>
         <h2>Sections</h2>
         <div class="category-list"></div>
@@ -43,19 +47,28 @@
           </div>
           <aside class="summary">
             <div class="stat-grid"></div>
+            <div class="summary-actions">
+              <a class="download" href="../sheets/dsa-problem-lists.xlsx">Download</a>
+            </div>
           </aside>
         </section>
         <section class="toolbar">
           <input id="search" type="search" placeholder="Search problems" />
-          <select id="categoryFilter"></select>
-          <select id="difficultyFilter">
-            <option value="all">All difficulties</option>
-            <option value="Easy">Easy</option>
-            <option value="Medium">Medium</option>
-            <option value="Hard">Hard</option>
-          </select>
-          <select id="listFilter"></select>
-          <button id="randomButton" type="button">Random</button>
+          <details id="difficultyFilter" class="filter-dropdown">
+            <summary><span>Easy, Medium, Hard</span></summary>
+            <div class="filter-menu">
+              <label><input type="checkbox" value="easy" data-label="Easy" checked />Easy</label>
+              <label><input type="checkbox" value="medium" data-label="Medium" checked />Medium</label>
+              <label><input type="checkbox" value="hard" data-label="Hard" checked />Hard</label>
+            </div>
+          </details>
+          <details id="proFilter" class="filter-dropdown">
+            <summary><span>Pro</span></summary>
+            <div class="filter-menu">
+              <label><input id="includePro" type="checkbox" data-label="Pro" checked />Pro questions</label>
+            </div>
+          </details>
+          <button id="randomButton" type="button">Random Pick</button>
         </section>
         <section class="problem-area">
           <div class="problem-head">
@@ -76,10 +89,9 @@
         subtitle: '474 problems',
         kicker: 'strivers-a2z-sheet',
         description: 'A structured DSA track with article, video, LeetCode, Plus, and editorial links in one searchable workspace.',
-        dataUrl: '../data/strivers-a2z-problems.json',
-        excelUrl: '../sheets/strivers-a2z-problems.xlsx'
+        dataUrl: '../data/strivers-a2z-problems.json'
       };
     </script>
-    <script src="../assets/app.js?v=8"></script>
+    <script src="../assets/app.js?v=10"></script>
   </body>
 </html>

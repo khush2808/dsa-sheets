@@ -1,8 +1,9 @@
 const state = {
   data: null,
   category: 'all',
-  difficulty: 'all',
-  list: window.SHEET_CONFIG.initialList || 'all',
+  difficulties: ['easy', 'medium', 'hard'],
+  includePro: true,
+  theme: localStorage.getItem('theme') || 'light',
   query: '',
   linkTarget: localStorage.getItem('dsaSheetLinkTarget') || 'same',
   progress: {},
@@ -156,6 +157,8 @@ const groupName = (problem) =>
 const subName = (problem) =>
   config.type === 'striver' ? problem.subcategory_name : problem.code;
 
+const difficultyKey = (value) => String(value ?? '').toLowerCase();
+
 const articleLink = (problem) => problem.article || problem.solution;
 
 const googleSearchLink = (problem) =>
@@ -165,6 +168,9 @@ const isInList = (problem, list) => {
   if (list === 'all') return true;
   return Boolean(problem.list_membership?.[list]);
 };
+
+const allowsPro = (problem) =>
+  config.type !== 'neetcode' || state.includePro || !problem.list_membership?.pro;
 
 const linkSet = (problem) => [
   ['Article', articleLink(problem)],
@@ -189,20 +195,46 @@ const filteredProblems = () =>
 
     return (
       (state.category === 'all' || slug(groupName(problem)) === state.category) &&
-      (state.difficulty === 'all' || problem.difficulty === state.difficulty) &&
-      isInList(problem, state.list) &&
+      state.difficulties.includes(difficultyKey(problem.difficulty)) &&
+      isInList(problem, config.initialList || 'all') &&
+      allowsPro(problem) &&
       haystack.includes(state.query.toLowerCase())
     );
   });
 
 const routeProblems = () =>
-  state.data.problems.filter((problem) => isInList(problem, config.initialList || 'all'));
+  state.data.problems.filter((problem) => isInList(problem, config.initialList || 'all') && allowsPro(problem));
+
+const updateDropdownSummary = (id, fallback) => {
+  const dropdown = $(`#${id}`);
+  if (!dropdown) return;
+  const summary = dropdown.querySelector('summary span');
+  const checked = [...dropdown.querySelectorAll('input[type="checkbox"]:checked')].map((checkbox) => checkbox.dataset.label || checkbox.value);
+  summary.textContent = checked.length ? checked.join(', ') : fallback;
+};
+
+const renderFilterSummaries = () => {
+  updateDropdownSummary('difficultyFilter', 'No difficulties');
+  updateDropdownSummary('proFilter', 'No Pro questions');
+};
+
+const applyTheme = () => {
+  document.documentElement.dataset.theme = state.theme;
+  localStorage.setItem('theme', state.theme);
+  const button = $('#themeToggle');
+  if (button) {
+    const label = state.theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+    button.setAttribute('aria-label', label);
+    button.setAttribute('title', label);
+    button.setAttribute('aria-pressed', String(state.theme === 'dark'));
+  }
+};
 
 const renderStats = () => {
   const problems = filteredProblems();
-  const easy = problems.filter((problem) => problem.difficulty === 'Easy').length;
-  const medium = problems.filter((problem) => problem.difficulty === 'Medium').length;
-  const hard = problems.filter((problem) => problem.difficulty === 'Hard').length;
+  const easy = problems.filter((problem) => difficultyKey(problem.difficulty) === 'easy').length;
+  const medium = problems.filter((problem) => difficultyKey(problem.difficulty) === 'medium').length;
+  const hard = problems.filter((problem) => difficultyKey(problem.difficulty) === 'hard').length;
   $('.stat-grid').innerHTML = [
     ['Problems', problems.length],
     ['Easy', easy],
@@ -305,27 +337,13 @@ const renderRows = () => {
 };
 
 const renderFilters = () => {
-  const groups = [...new Set(state.data.problems.map(groupName))];
-  $('#categoryFilter').innerHTML = [
-    '<option value="all">All categories</option>',
-    ...groups.map((group) => `<option value="${slug(group)}">${escapeHtml(group)}</option>`)
-  ].join('');
+  $('#proFilter').hidden = config.type !== 'neetcode';
 
-  if (config.type === 'neetcode') {
-    $('#listFilter').innerHTML = `
-      <option value="all">All lists</option>
-      <option value="blind75">Blind 75</option>
-      <option value="neetcode150">NeetCode 150</option>
-      <option value="neetcode250">NeetCode 250</option>
-      <option value="premium_algo100">Algo 100</option>
-      <option value="pro">Pro</option>`;
-    $('#listFilter').value = state.list;
-    if (config.lockList) {
-      $('#listFilter').hidden = true;
-    }
-  } else {
-    $('#listFilter').hidden = true;
-  }
+  document.querySelectorAll('#difficultyFilter input[type="checkbox"]').forEach((checkbox) => {
+    checkbox.checked = state.difficulties.includes(checkbox.value);
+  });
+  $('#includePro').checked = state.includePro;
+  renderFilterSummaries();
 };
 
 const renderCanvas = () => {
@@ -372,6 +390,7 @@ const rerender = () => {
 };
 
 const init = async () => {
+  applyTheme();
   state.data = await fetch(config.dataUrl).then((response) => response.json());
   state.progress = await progressRepository.loadAll();
   document.title = config.title;
@@ -380,7 +399,6 @@ const init = async () => {
   $('.eyebrow').textContent = config.kicker;
   $('.hero h2').textContent = config.title;
   $('.hero p').textContent = config.description;
-  $('.download').href = config.excelUrl;
 
   renderFilters();
   renderLinkTargetControl();
@@ -391,17 +409,21 @@ const init = async () => {
     state.query = event.target.value;
     rerender();
   });
-  $('#categoryFilter').addEventListener('change', (event) => {
-    state.category = event.target.value;
+  $('#difficultyFilter').addEventListener('change', () => {
+    state.difficulties = [...document.querySelectorAll('#difficultyFilter input[type="checkbox"]:checked')].map(
+      (checkbox) => checkbox.value
+    );
+    renderFilterSummaries();
     rerender();
   });
-  $('#difficultyFilter').addEventListener('change', (event) => {
-    state.difficulty = event.target.value;
+  $('#proFilter').addEventListener('change', () => {
+    state.includePro = $('#includePro').checked;
+    renderFilterSummaries();
     rerender();
   });
-  $('#listFilter').addEventListener('change', (event) => {
-    state.list = event.target.value;
-    rerender();
+  $('#themeToggle').addEventListener('click', () => {
+    state.theme = state.theme === 'dark' ? 'light' : 'dark';
+    applyTheme();
   });
   $('#linkTarget').addEventListener('change', (event) => {
     state.linkTarget = event.target.value;
@@ -420,7 +442,6 @@ const init = async () => {
     const button = event.target.closest('button[data-category]');
     if (!button) return;
     state.category = button.dataset.category;
-    $('#categoryFilter').value = state.category;
     rerender();
   });
   $('.problem-list').addEventListener('click', (event) => {
