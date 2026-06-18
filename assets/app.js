@@ -4,7 +4,10 @@ const state = {
   difficulties: ['easy', 'medium', 'hard'],
   includePro: true,
   theme: localStorage.getItem('theme') || 'light',
-  query: ''
+  query: '',
+  linkTarget: localStorage.getItem('dsaSheetLinkTarget') || 'same',
+  progress: {},
+  openNotes: new Set()
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -21,12 +24,129 @@ const escapeHtml = (value) =>
 
 const escapeAttr = escapeHtml;
 
+const linkTargetAttrs = () =>
+  state.linkTarget === 'new' ? ' target="_blank" rel="noopener noreferrer"' : '';
+
 const slug = (value) =>
   String(value)
     .toLowerCase()
     .replace(/&/g, 'and')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
+
+const problemProgressId = (problem) =>
+  [config.type, problem.problem_id || problem.code || problem.leetcode_slug || slug(problem.problem_name)].join(':');
+
+const normalizeNotes = (record = {}) => {
+  if (Array.isArray(record.notes)) {
+    return record.notes.filter((note) => note && typeof note.text === 'string');
+  }
+  if (typeof record.notes === 'string' && record.notes.trim()) {
+    const now = record.updatedAt || new Date().toISOString();
+    return [
+      {
+        id: `note-${Date.parse(now) || Date.now()}`,
+        text: record.notes,
+        createdAt: now,
+        updatedAt: now
+      }
+    ];
+  }
+  return [];
+};
+
+const noteCount = (record = {}) => normalizeNotes(record).length;
+
+const createLocalProgressAdapter = () => {
+  const storageKey = 'dsaSheetProblemProgress:v1';
+
+  const read = () => {
+    try {
+      return JSON.parse(localStorage.getItem(storageKey) || '{}');
+    } catch {
+      return {};
+    }
+  };
+
+  const write = (records) => {
+    localStorage.setItem(storageKey, JSON.stringify(records));
+  };
+
+  return {
+    async loadAll() {
+      const records = read();
+      return Object.fromEntries(
+        Object.entries(records).map(([problemId, record]) => [
+          problemId,
+          {
+            ...record,
+            notes: normalizeNotes(record)
+          }
+        ])
+      );
+    },
+    async saveProblem(problemId, value) {
+      const records = read();
+      const existing = records[problemId] || {};
+      records[problemId] = {
+        ...existing,
+        notes: normalizeNotes(existing),
+        ...value,
+        updatedAt: new Date().toISOString()
+      };
+      if (!records[problemId].completed && !noteCount(records[problemId])) {
+        delete records[problemId];
+      }
+      write(records);
+      return this.loadAll();
+    }
+  };
+};
+
+const createProgressRepository = (adapter) => ({
+  loadAll: () => adapter.loadAll(),
+  saveProblem: (problemId, value) => adapter.saveProblem(problemId, value)
+});
+
+const progressRepository = createProgressRepository(createLocalProgressAdapter());
+
+const updateProblemProgress = async (problemId, value) => {
+  state.progress = await progressRepository.saveProblem(problemId, value);
+};
+
+const renderNotesButton = (problemId, progress) => {
+  const count = noteCount(progress);
+  return `<button class="note-toggle ${state.openNotes.has(problemId) ? 'active' : ''}" type="button" data-notes-toggle="${escapeAttr(problemId)}" aria-expanded="${state.openNotes.has(problemId)}" title="Notes">
+    <span class="note-icon" aria-hidden="true"></span>
+    <span class="note-count">${count}</span>
+  </button>`;
+};
+
+const renderNotesPanel = (problemId, progress) => {
+  if (!state.openNotes.has(problemId)) return '';
+  const notes = normalizeNotes(progress);
+  const rows = notes.length
+    ? notes
+        .map(
+          (note) => `<div class="note-editor">
+            <textarea data-note-edit="${escapeAttr(problemId)}" data-note-id="${escapeAttr(note.id)}" rows="2">${escapeHtml(note.text)}</textarea>
+            <button class="delete-note-button" type="button" data-note-delete="${escapeAttr(problemId)}" data-note-id="${escapeAttr(note.id)}" title="Delete note" aria-label="Delete note">
+              <span aria-hidden="true"></span>
+            </button>
+          </div>`
+        )
+        .join('')
+    : '<p class="notes-empty">No notes yet.</p>';
+
+  return `<div class="notes-panel">
+    <div class="notes-banner">${noteCount(progress)} notes</div>
+    <div class="notes-list">${rows}</div>
+    <button class="add-note-button" type="button" data-note-add="${escapeAttr(problemId)}" title="New note">
+      <span aria-hidden="true">+</span>
+      <span>New note</span>
+    </button>
+  </div>`;
+};
 
 const groupName = (problem) =>
   config.type === 'striver' ? problem.category_name : problem.pattern;
@@ -37,6 +157,9 @@ const subName = (problem) =>
 const difficultyKey = (value) => String(value ?? '').toLowerCase();
 
 const articleLink = (problem) => problem.article || problem.solution;
+
+const googleSearchLink = (problem) =>
+  `https://www.google.com/search?q=${encodeURIComponent(`${problem.problem_name} dsa problem`)}`;
 
 const isInList = (problem, list) => {
   if (list === 'all') return true;
@@ -50,6 +173,7 @@ const linkSet = (problem) => [
   ['Article', articleLink(problem)],
   ['YouTube', problem.youtube],
   ['LeetCode', problem.leetcode],
+  ['Google', googleSearchLink(problem)],
   ['Other', problem.link]
 ];
 
@@ -132,6 +256,22 @@ const renderCategories = () => {
   ].join('');
 };
 
+const renderLinkTargetControl = () => {
+  const nav = $('.nav-links');
+  nav.insertAdjacentHTML(
+    'afterend',
+    `<section class="link-target-panel" aria-label="Problem link behavior">
+      <h2>Links</h2>
+      <label for="linkTarget">Open problem links</label>
+      <select id="linkTarget">
+        <option value="same">Same tab</option>
+        <option value="new">New tab</option>
+      </select>
+    </section>`
+  );
+  $('#linkTarget').value = state.linkTarget;
+};
+
 const renderRows = () => {
   const problems = filteredProblems();
   const headLabel = state.category === 'all' ? 'Sections' : problems[0] ? groupName(problems[0]) : 'Section';
@@ -151,24 +291,30 @@ const renderRows = () => {
         const rows = groupProblems
           .map((problem) => {
             const mainHref = primaryLink(problem);
+            const problemId = problemProgressId(problem);
+            const progress = state.progress[problemId] || {};
             const links = linkSet(problem)
               .filter(([, href]) => href)
-              .map(([label, href]) => `<a href="${escapeAttr(href)}">${escapeHtml(label)}</a>`)
+              .map(([label, href]) => `<a href="${escapeAttr(href)}"${linkTargetAttrs()}>${escapeHtml(label)}</a>`)
               .join('');
 
             return `<article class="problem-row ${mainHref ? 'clickable' : ''}" ${mainHref ? `data-primary-link="${escapeAttr(mainHref)}"` : ''}>
+              <label class="done-control" title="Mark complete">
+                <input type="checkbox" data-progress-id="${escapeAttr(problemId)}" data-progress-field="completed" ${progress.completed ? 'checked' : ''} />
+              </label>
               <div class="problem-title">
                 <div class="problem-line">
                   ${
                     mainHref
-                      ? `<a class="primary-link" href="${escapeAttr(mainHref)}">${escapeHtml(problem.problem_name)}</a>`
+                      ? `<a class="primary-link" href="${escapeAttr(mainHref)}"${linkTargetAttrs()}>${escapeHtml(problem.problem_name)}</a>`
                       : `<b>${escapeHtml(problem.problem_name)}</b>`
                   }
                   <span class="pill ${String(problem.difficulty).toLowerCase()}">${escapeHtml(problem.difficulty)}</span>
                 </div>
                 <span>${escapeHtml(subName(problem) || '')}</span>
+                ${renderNotesPanel(problemId, progress)}
               </div>
-              <div class="links">${links}</div>
+              <div class="links">${links}${renderNotesButton(problemId, progress)}</div>
             </article>`;
           })
           .join('');
@@ -243,6 +389,7 @@ const rerender = () => {
 const init = async () => {
   applyTheme();
   state.data = await fetch(config.dataUrl).then((response) => response.json());
+  state.progress = await progressRepository.loadAll();
   document.title = config.title;
   $('.brand h1').textContent = config.shortTitle;
   $('.brand p').textContent = config.subtitle;
@@ -251,6 +398,7 @@ const init = async () => {
   $('.hero p').textContent = config.description;
 
   renderFilters();
+  renderLinkTargetControl();
   renderCanvas();
   rerender();
 
@@ -274,6 +422,11 @@ const init = async () => {
     state.theme = state.theme === 'dark' ? 'light' : 'dark';
     applyTheme();
   });
+  $('#linkTarget').addEventListener('change', (event) => {
+    state.linkTarget = event.target.value;
+    localStorage.setItem('dsaSheetLinkTarget', state.linkTarget);
+    rerender();
+  });
   $('#randomButton').addEventListener('click', () => {
     const problems = filteredProblems();
     if (!problems.length) return;
@@ -289,10 +442,74 @@ const init = async () => {
     rerender();
   });
   $('.problem-list').addEventListener('click', (event) => {
-    if (event.target.closest('a')) return;
+    if (event.target.closest('a, button, input, textarea, select, label')) return;
     const row = event.target.closest('.problem-row[data-primary-link]');
     if (!row) return;
+    if (state.linkTarget === 'new') {
+      window.open(row.dataset.primaryLink, '_blank', 'noopener,noreferrer');
+      return;
+    }
     window.location.href = row.dataset.primaryLink;
+  });
+  $('.problem-list').addEventListener('change', async (event) => {
+    const input = event.target.closest('input[data-progress-field="completed"]');
+    if (!input) return;
+    await updateProblemProgress(input.dataset.progressId, { completed: input.checked });
+  });
+  $('.problem-list').addEventListener('click', async (event) => {
+    const toggle = event.target.closest('button[data-notes-toggle]');
+    if (toggle) {
+      const problemId = toggle.dataset.notesToggle;
+      if (state.openNotes.has(problemId)) {
+        state.openNotes.delete(problemId);
+      } else {
+        state.openNotes.add(problemId);
+      }
+      rerender();
+      return;
+    }
+
+    const addButton = event.target.closest('button[data-note-add]');
+    if (addButton) {
+      const problemId = addButton.dataset.noteAdd;
+      const progress = state.progress[problemId] || {};
+      const now = new Date().toISOString();
+      const notes = [
+        ...normalizeNotes(progress),
+        {
+          id: `note-${Date.now()}`,
+          text: '',
+          createdAt: now,
+          updatedAt: now
+        }
+      ];
+      await updateProblemProgress(problemId, { notes });
+      state.openNotes.add(problemId);
+      rerender();
+      $(`textarea[data-note-id="${notes[notes.length - 1].id}"]`)?.focus();
+      return;
+    }
+
+    const deleteButton = event.target.closest('button[data-note-delete]');
+    if (!deleteButton) return;
+    const problemId = deleteButton.dataset.noteDelete;
+    const noteId = deleteButton.dataset.noteId;
+    const progress = state.progress[problemId] || {};
+    const notes = normalizeNotes(progress).filter((note) => note.id !== noteId);
+    await updateProblemProgress(problemId, { notes });
+    state.openNotes.add(problemId);
+    rerender();
+  });
+  $('.problem-list').addEventListener('input', async (event) => {
+    const textarea = event.target.closest('textarea[data-note-edit]');
+    if (!textarea) return;
+    const problemId = textarea.dataset.noteEdit;
+    const noteId = textarea.dataset.noteId;
+    const progress = state.progress[problemId] || {};
+    const notes = normalizeNotes(progress).map((note) =>
+      note.id === noteId ? { ...note, text: textarea.value, updatedAt: new Date().toISOString() } : note
+    );
+    await updateProblemProgress(problemId, { notes });
   });
 };
 
