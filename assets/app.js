@@ -5,7 +5,8 @@ const state = {
   list: window.SHEET_CONFIG.initialList || 'all',
   query: '',
   linkTarget: localStorage.getItem('dsaSheetLinkTarget') || 'same',
-  progress: {}
+  progress: {},
+  openNotes: new Set()
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -35,6 +36,26 @@ const slug = (value) =>
 const problemProgressId = (problem) =>
   [config.type, problem.problem_id || problem.code || problem.leetcode_slug || slug(problem.problem_name)].join(':');
 
+const normalizeNotes = (record = {}) => {
+  if (Array.isArray(record.notes)) {
+    return record.notes.filter((note) => note && typeof note.text === 'string');
+  }
+  if (typeof record.notes === 'string' && record.notes.trim()) {
+    const now = record.updatedAt || new Date().toISOString();
+    return [
+      {
+        id: `note-${Date.parse(now) || Date.now()}`,
+        text: record.notes,
+        createdAt: now,
+        updatedAt: now
+      }
+    ];
+  }
+  return [];
+};
+
+const noteCount = (record = {}) => normalizeNotes(record).length;
+
 const createLocalProgressAdapter = () => {
   const storageKey = 'dsaSheetProblemProgress:v1';
 
@@ -52,20 +73,31 @@ const createLocalProgressAdapter = () => {
 
   return {
     async loadAll() {
-      return read();
+      const records = read();
+      return Object.fromEntries(
+        Object.entries(records).map(([problemId, record]) => [
+          problemId,
+          {
+            ...record,
+            notes: normalizeNotes(record)
+          }
+        ])
+      );
     },
     async saveProblem(problemId, value) {
       const records = read();
+      const existing = records[problemId] || {};
       records[problemId] = {
-        ...records[problemId],
+        ...existing,
+        notes: normalizeNotes(existing),
         ...value,
         updatedAt: new Date().toISOString()
       };
-      if (!records[problemId].completed && !records[problemId].notes) {
+      if (!records[problemId].completed && !noteCount(records[problemId])) {
         delete records[problemId];
       }
       write(records);
-      return records;
+      return this.loadAll();
     }
   };
 };
@@ -79,6 +111,38 @@ const progressRepository = createProgressRepository(createLocalProgressAdapter()
 
 const updateProblemProgress = async (problemId, value) => {
   state.progress = await progressRepository.saveProblem(problemId, value);
+};
+
+const renderNotesButton = (problemId, progress) => {
+  const count = noteCount(progress);
+  return `<button class="note-toggle ${state.openNotes.has(problemId) ? 'active' : ''}" type="button" data-notes-toggle="${escapeAttr(problemId)}" aria-expanded="${state.openNotes.has(problemId)}" title="Notes">
+    <span class="note-icon" aria-hidden="true"></span>
+    <span class="note-count">${count}</span>
+  </button>`;
+};
+
+const renderNotesPanel = (problemId, progress) => {
+  if (!state.openNotes.has(problemId)) return '';
+  const notes = normalizeNotes(progress);
+  const rows = notes.length
+    ? notes
+        .map(
+          (note) => `<label class="note-editor">
+            <span>Note</span>
+            <textarea data-note-edit="${escapeAttr(problemId)}" data-note-id="${escapeAttr(note.id)}" rows="2">${escapeHtml(note.text)}</textarea>
+          </label>`
+        )
+        .join('')
+    : '<p class="notes-empty">No notes yet.</p>';
+
+  return `<div class="notes-panel">
+    <div class="notes-banner">${noteCount(progress)} notes</div>
+    <div class="notes-list">${rows}</div>
+    <button class="add-note-button" type="button" data-note-add="${escapeAttr(problemId)}" title="New note">
+      <span aria-hidden="true">+</span>
+      <span>New note</span>
+    </button>
+  </div>`;
 };
 
 const groupName = (problem) =>
@@ -203,7 +267,6 @@ const renderRows = () => {
             return `<article class="problem-row ${mainHref ? 'clickable' : ''}" ${mainHref ? `data-primary-link="${escapeAttr(mainHref)}"` : ''}>
               <label class="done-control" title="Mark complete">
                 <input type="checkbox" data-progress-id="${escapeAttr(problemId)}" data-progress-field="completed" ${progress.completed ? 'checked' : ''} />
-                <span></span>
               </label>
               <div class="problem-title">
                 <div class="problem-line">
@@ -215,9 +278,9 @@ const renderRows = () => {
                   <span class="pill ${String(problem.difficulty).toLowerCase()}">${escapeHtml(problem.difficulty)}</span>
                 </div>
                 <span>${escapeHtml(subName(problem) || '')}</span>
-                <textarea class="problem-note" data-progress-id="${escapeAttr(problemId)}" data-progress-field="notes" rows="2" placeholder="Notes">${escapeHtml(progress.notes || '')}</textarea>
+                ${renderNotesPanel(problemId, progress)}
               </div>
-              <div class="links">${links}</div>
+              <div class="links">${links}${renderNotesButton(problemId, progress)}</div>
             </article>`;
           })
           .join('');
@@ -370,10 +433,48 @@ const init = async () => {
     if (!input) return;
     await updateProblemProgress(input.dataset.progressId, { completed: input.checked });
   });
+  $('.problem-list').addEventListener('click', async (event) => {
+    const toggle = event.target.closest('button[data-notes-toggle]');
+    if (toggle) {
+      const problemId = toggle.dataset.notesToggle;
+      if (state.openNotes.has(problemId)) {
+        state.openNotes.delete(problemId);
+      } else {
+        state.openNotes.add(problemId);
+      }
+      rerender();
+      return;
+    }
+
+    const addButton = event.target.closest('button[data-note-add]');
+    if (!addButton) return;
+    const problemId = addButton.dataset.noteAdd;
+    const progress = state.progress[problemId] || {};
+    const now = new Date().toISOString();
+    const notes = [
+      ...normalizeNotes(progress),
+      {
+        id: `note-${Date.now()}`,
+        text: '',
+        createdAt: now,
+        updatedAt: now
+      }
+    ];
+    await updateProblemProgress(problemId, { notes });
+    state.openNotes.add(problemId);
+    rerender();
+    $(`textarea[data-note-id="${notes[notes.length - 1].id}"]`)?.focus();
+  });
   $('.problem-list').addEventListener('input', async (event) => {
-    const textarea = event.target.closest('textarea[data-progress-field="notes"]');
+    const textarea = event.target.closest('textarea[data-note-edit]');
     if (!textarea) return;
-    await updateProblemProgress(textarea.dataset.progressId, { notes: textarea.value.trim() });
+    const problemId = textarea.dataset.noteEdit;
+    const noteId = textarea.dataset.noteId;
+    const progress = state.progress[problemId] || {};
+    const notes = normalizeNotes(progress).map((note) =>
+      note.id === noteId ? { ...note, text: textarea.value, updatedAt: new Date().toISOString() } : note
+    );
+    await updateProblemProgress(problemId, { notes });
   });
 };
 
