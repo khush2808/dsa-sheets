@@ -3,7 +3,8 @@ const state = {
   category: 'all',
   difficulty: 'all',
   list: window.SHEET_CONFIG.initialList || 'all',
-  query: ''
+  query: '',
+  linkTarget: localStorage.getItem('dsaSheetLinkTarget') || 'same'
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -19,6 +20,9 @@ const escapeHtml = (value) =>
     .replace(/'/g, '&#039;');
 
 const escapeAttr = escapeHtml;
+
+const linkTargetAttrs = () =>
+  state.linkTarget === 'new' ? ' target="_blank" rel="noopener noreferrer"' : '';
 
 const slug = (value) =>
   String(value)
@@ -104,6 +108,22 @@ const renderCategories = () => {
   ].join('');
 };
 
+const renderLinkTargetControl = () => {
+  const nav = $('.nav-links');
+  nav.insertAdjacentHTML(
+    'afterend',
+    `<section class="link-target-panel" aria-label="Problem link behavior">
+      <h2>Links</h2>
+      <label for="linkTarget">Open problem links</label>
+      <select id="linkTarget">
+        <option value="same">Same tab</option>
+        <option value="new">New tab</option>
+      </select>
+    </section>`
+  );
+  $('#linkTarget').value = state.linkTarget;
+};
+
 const renderRows = () => {
   const problems = filteredProblems();
   const headLabel = state.category === 'all' ? 'Sections' : problems[0] ? groupName(problems[0]) : 'Section';
@@ -125,7 +145,7 @@ const renderRows = () => {
             const mainHref = primaryLink(problem);
             const links = linkSet(problem)
               .filter(([, href]) => href)
-              .map(([label, href]) => `<a href="${escapeAttr(href)}">${escapeHtml(label)}</a>`)
+              .map(([label, href]) => `<a href="${escapeAttr(href)}"${linkTargetAttrs()}>${escapeHtml(label)}</a>`)
               .join('');
 
             return `<article class="problem-row ${mainHref ? 'clickable' : ''}" ${mainHref ? `data-primary-link="${escapeAttr(mainHref)}"` : ''}>
@@ -133,7 +153,7 @@ const renderRows = () => {
                 <div class="problem-line">
                   ${
                     mainHref
-                      ? `<a class="primary-link" href="${escapeAttr(mainHref)}">${escapeHtml(problem.problem_name)}</a>`
+                      ? `<a class="primary-link" href="${escapeAttr(mainHref)}"${linkTargetAttrs()}>${escapeHtml(problem.problem_name)}</a>`
                       : `<b>${escapeHtml(problem.problem_name)}</b>`
                   }
                   <span class="pill ${String(problem.difficulty).toLowerCase()}">${escapeHtml(problem.difficulty)}</span>
@@ -237,6 +257,7 @@ const init = async () => {
   $('.download').href = config.excelUrl;
 
   renderFilters();
+  renderLinkTargetControl();
   renderCanvas();
   rerender();
 
@@ -254,6 +275,11 @@ const init = async () => {
   });
   $('#listFilter').addEventListener('change', (event) => {
     state.list = event.target.value;
+    rerender();
+  });
+  $('#linkTarget').addEventListener('change', (event) => {
+    state.linkTarget = event.target.value;
+    localStorage.setItem('dsaSheetLinkTarget', state.linkTarget);
     rerender();
   });
   $('#randomButton').addEventListener('click', () => {
@@ -275,6 +301,10 @@ const init = async () => {
     if (event.target.closest('a')) return;
     const row = event.target.closest('.problem-row[data-primary-link]');
     if (!row) return;
+    if (state.linkTarget === 'new') {
+      window.open(row.dataset.primaryLink, '_blank', 'noopener,noreferrer');
+      return;
+    }
     window.location.href = row.dataset.primaryLink;
   });
 };
