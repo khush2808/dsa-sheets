@@ -530,9 +530,15 @@ a {
   text-transform: uppercase;
 }
 
-.section-card > span {
+.section-status {
   flex: 0 0 auto;
-  min-width: 2.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.section-status > span {
+  min-width: 3.15rem;
   height: 2.25rem;
   border-radius: 999px;
   display: grid;
@@ -541,6 +547,25 @@ a {
   border: 1px solid color-mix(in srgb, var(--section-bg), var(--section-ink) 22%);
   color: var(--section-ink);
   font-weight: 800;
+}
+
+.section-done-control {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--section-bg), var(--section-ink) 10%);
+  border: 1px solid color-mix(in srgb, var(--section-bg), var(--section-ink) 22%);
+  cursor: pointer;
+}
+
+.section-done-control input {
+  width: 1.05rem;
+  height: 1.05rem;
+  margin: 0;
+  accent-color: var(--ok);
+  cursor: pointer;
 }
 
 .section-problems {

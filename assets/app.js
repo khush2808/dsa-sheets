@@ -57,6 +57,9 @@ const normalizeNotes = (record = {}) => {
 
 const noteCount = (record = {}) => normalizeNotes(record).length;
 
+const shouldKeepProgressRecord = (record = {}) =>
+  Boolean(record.completed) || noteCount(record);
+
 const createLocalProgressAdapter = () => {
   const storageKey = 'dsaSheetProblemProgress:v1';
 
@@ -70,6 +73,19 @@ const createLocalProgressAdapter = () => {
 
   const write = (records) => {
     localStorage.setItem(storageKey, JSON.stringify(records));
+  };
+
+  const applyProblemUpdate = (records, problemId, value, updatedAt) => {
+    const existing = records[problemId] || {};
+    records[problemId] = {
+      ...existing,
+      notes: normalizeNotes(existing),
+      ...value,
+      updatedAt
+    };
+    if (!shouldKeepProgressRecord(records[problemId])) {
+      delete records[problemId];
+    }
   };
 
   return {
@@ -87,16 +103,16 @@ const createLocalProgressAdapter = () => {
     },
     async saveProblem(problemId, value) {
       const records = read();
-      const existing = records[problemId] || {};
-      records[problemId] = {
-        ...existing,
-        notes: normalizeNotes(existing),
-        ...value,
-        updatedAt: new Date().toISOString()
-      };
-      if (!records[problemId].completed && !noteCount(records[problemId])) {
-        delete records[problemId];
-      }
+      applyProblemUpdate(records, problemId, value, new Date().toISOString());
+      write(records);
+      return this.loadAll();
+    },
+    async saveProblems(updates) {
+      const records = read();
+      const updatedAt = new Date().toISOString();
+      updates.forEach(({ problemId, value }) => {
+        applyProblemUpdate(records, problemId, value, updatedAt);
+      });
       write(records);
       return this.loadAll();
     }
@@ -105,13 +121,18 @@ const createLocalProgressAdapter = () => {
 
 const createProgressRepository = (adapter) => ({
   loadAll: () => adapter.loadAll(),
-  saveProblem: (problemId, value) => adapter.saveProblem(problemId, value)
+  saveProblem: (problemId, value) => adapter.saveProblem(problemId, value),
+  saveProblems: (updates) => adapter.saveProblems(updates)
 });
 
 const progressRepository = createProgressRepository(createLocalProgressAdapter());
 
 const updateProblemProgress = async (problemId, value) => {
   state.progress = await progressRepository.saveProblem(problemId, value);
+};
+
+const updateManyProblemProgress = async (updates) => {
+  state.progress = await progressRepository.saveProblems(updates);
 };
 
 const renderNotesButton = (problemId, progress) => {
@@ -146,6 +167,24 @@ const renderNotesPanel = (problemId, progress) => {
       <span>New note</span>
     </button>
   </div>`;
+};
+
+const problemCompleted = (problem) => Boolean(state.progress[problemProgressId(problem)]?.completed);
+
+const sectionProgress = (problems) => {
+  const completed = problems.filter(problemCompleted).length;
+  return {
+    completed,
+    total: problems.length,
+    isComplete: Boolean(problems.length && completed === problems.length),
+    isPartial: completed > 0 && completed < problems.length
+  };
+};
+
+const applySectionCheckboxStates = () => {
+  document.querySelectorAll('input[data-section-toggle]').forEach((input) => {
+    input.indeterminate = input.dataset.sectionPartial === 'true';
+  });
 };
 
 const groupName = (problem) =>
@@ -288,6 +327,8 @@ const renderRows = () => {
   $('.problem-list').innerHTML =
     [...groupedProblems.entries()]
       .map(([name, groupProblems]) => {
+        const groupProgress = sectionProgress(groupProblems);
+        const groupProblemIds = groupProblems.map(problemProgressId).join(' ');
         const rows = groupProblems
           .map((problem) => {
             const mainHref = primaryLink(problem);
@@ -319,13 +360,18 @@ const renderRows = () => {
           })
           .join('');
 
-        return `<section class="problem-section">
+        return `<section class="problem-section ${groupProgress.isComplete ? 'section-complete' : ''}">
           <header class="section-card">
             <div>
               <h3>${escapeHtml(name)}</h3>
               <p>${escapeHtml(config.type === 'striver' ? 'Section' : 'Pattern')}</p>
             </div>
-            <span>${groupProblems.length}</span>
+            <div class="section-status">
+              <label class="section-done-control" title="Mark section complete">
+                <input type="checkbox" data-section-toggle data-section-partial="${groupProgress.isPartial}" data-problem-ids="${escapeAttr(groupProblemIds)}" aria-label="Mark ${escapeAttr(name)} complete" ${groupProgress.isComplete ? 'checked' : ''} />
+              </label>
+              <span>${groupProgress.completed}/${groupProgress.total}</span>
+            </div>
           </header>
           <div class="section-problems">${rows}</div>
         </section>`;
@@ -384,6 +430,7 @@ const rerender = () => {
   renderStats();
   renderCategories();
   renderRows();
+  applySectionCheckboxStates();
 };
 
 const init = async () => {
@@ -452,9 +499,23 @@ const init = async () => {
     window.location.href = row.dataset.primaryLink;
   });
   $('.problem-list').addEventListener('change', async (event) => {
+    const sectionInput = event.target.closest('input[data-section-toggle]');
+    if (sectionInput) {
+      const problemIds = sectionInput.dataset.problemIds.split(' ').filter(Boolean);
+      await updateManyProblemProgress(
+        problemIds.map((problemId) => ({
+          problemId,
+          value: { completed: sectionInput.checked }
+        }))
+      );
+      rerender();
+      return;
+    }
+
     const input = event.target.closest('input[data-progress-field="completed"]');
     if (!input) return;
     await updateProblemProgress(input.dataset.progressId, { completed: input.checked });
+    rerender();
   });
   $('.problem-list').addEventListener('click', async (event) => {
     const toggle = event.target.closest('button[data-notes-toggle]');
