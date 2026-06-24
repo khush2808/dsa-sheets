@@ -5,8 +5,8 @@ export default function HomePage() {
   return (
     <main className="next-shell">
       <section className="next-hero">
-        <p>DSA Sheets Next preview</p>
-        <h1>Same sheets, ready for authenticated progress.</h1>
+        <p>DSA Sheets Next</p>
+        <h1>Same sheets, authenticated progress ready.</h1>
       </section>
       <section className="sheet-grid">
         {sheets.map((sheet) => (

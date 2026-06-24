@@ -8,6 +8,8 @@ const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 const progressStorageKey = 'dsaSheetProblemProgress:v1';
 const collapseStorageKey = 'dsaSheetCollapsedSections';
+const themeStorageKey = 'theme';
+const linkTargetStorageKey = 'dsaSheetLinkTarget';
 
 const slug = (value) =>
   String(value ?? '')
@@ -28,6 +30,21 @@ const subName = (sheet, problem) => (sheet.type === 'striver' ? problem.subcateg
 const normalizeNotes = (record = {}) => (Array.isArray(record.notes) ? record.notes.filter((note) => note && typeof note.text === 'string') : []);
 
 const shouldKeepRecord = (record = {}) => Boolean(record.completed) || normalizeNotes(record).length > 0;
+
+const articleLink = (problem) => problem.article || problem.solution;
+
+const googleSearchLink = (problem) =>
+  `https://www.google.com/search?q=${encodeURIComponent(`${problem.problem_name} dsa problem`)}`;
+
+const linkSet = (problem) => [
+  ['Article', articleLink(problem)],
+  ['YouTube', problem.youtube],
+  ['LeetCode', problem.leetcode],
+  ['Google', googleSearchLink(problem)],
+  ['Other', problem.link]
+].filter(([, href]) => href);
+
+const primaryLink = (problem) => articleLink(problem) || problem.leetcode || problem.youtube || problem.link;
 
 const readLocalProgress = () => {
   try {
@@ -60,6 +77,14 @@ const readCollapsed = () => {
 
 const writeCollapsed = (set) => {
   localStorage.setItem(collapseStorageKey, JSON.stringify([...set]));
+};
+
+const readLocalSetting = (key, fallback) => {
+  try {
+    return localStorage.getItem(key) || fallback;
+  } catch {
+    return fallback;
+  }
 };
 
 const remoteRowsToProgress = (progressRows = [], noteRows = []) => {
@@ -112,6 +137,8 @@ export default function SheetApp({ sheet, initialProblems }) {
   const [query, setQuery] = useState('');
   const [difficulties, setDifficulties] = useState(['easy', 'medium', 'hard']);
   const [includePro, setIncludePro] = useState(true);
+  const [theme, setTheme] = useState('light');
+  const [linkTarget, setLinkTarget] = useState('same');
   const [progress, setProgress] = useState({});
   const [collapsed, setCollapsed] = useState(new Set());
   const [openNotes, setOpenNotes] = useState(new Set());
@@ -119,7 +146,18 @@ export default function SheetApp({ sheet, initialProblems }) {
   useEffect(() => {
     setProgress(readLocalProgress());
     setCollapsed(readCollapsed());
+    setTheme(readLocalSetting(themeStorageKey, 'light'));
+    setLinkTarget(readLocalSetting(linkTargetStorageKey, 'same'));
   }, []);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem(themeStorageKey, theme);
+  }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem(linkTargetStorageKey, linkTarget);
+  }, [linkTarget]);
 
   useEffect(() => {
     if (!supabase) return;
@@ -291,13 +329,24 @@ export default function SheetApp({ sheet, initialProblems }) {
     await supabase?.auth.signInWithOAuth({ provider, options: { redirectTo: window.location.href } });
   };
 
+  const linkProps = linkTarget === 'new' ? { target: '_blank', rel: 'noopener noreferrer' } : {};
   const totalCompleted = filteredProblems.filter((problem) => progress[problemIdFor(sheet, problem)]?.completed).length;
 
   return (
     <main className="next-shell">
       <header className="next-toolbar">
         <a href="/">All sheets</a>
-        <div>
+        <div className="next-toolbar-controls">
+          <label>
+            Links
+            <select value={linkTarget} onChange={(event) => setLinkTarget(event.target.value)}>
+              <option value="same">Same tab</option>
+              <option value="new">New tab</option>
+            </select>
+          </label>
+          <button type="button" onClick={() => setTheme((current) => (current === 'dark' ? 'light' : 'dark'))} aria-pressed={theme === 'dark'}>
+            {theme === 'dark' ? 'Light' : 'Dark'}
+          </button>
           <span>{user?.email || syncStatus}</span>
           {user ? (
             <button type="button" onClick={() => supabase.auth.signOut()}>
@@ -380,6 +429,8 @@ export default function SheetApp({ sheet, initialProblems }) {
                     const record = progress[problemId] || { notes: [] };
                     const notes = normalizeNotes(record);
                     const notesOpen = openNotes.has(problemId);
+                    const mainHref = primaryLink(problem);
+                    const links = linkSet(problem);
                     return (
                       <article key={problemId}>
                         <input
@@ -389,7 +440,13 @@ export default function SheetApp({ sheet, initialProblems }) {
                           aria-label={`Mark ${problem.problem_name} complete`}
                         />
                         <div>
-                          <b>{problem.problem_name}</b>
+                          {mainHref ? (
+                            <a className="next-problem-link" href={mainHref} {...linkProps}>
+                              {problem.problem_name}
+                            </a>
+                          ) : (
+                            <b>{problem.problem_name}</b>
+                          )}
                           <span>
                             {subName(sheet, problem)} · {problem.difficulty}
                           </span>
@@ -409,9 +466,18 @@ export default function SheetApp({ sheet, initialProblems }) {
                             </div>
                           ) : null}
                         </div>
-                        <button type="button" onClick={() => setOpenNotes((current) => new Set(current.has(problemId) ? [...current].filter((id) => id !== problemId) : [...current, problemId]))}>
-                          Notes {notes.length}
-                        </button>
+                        <div className="next-row-actions">
+                          <div className="next-links">
+                            {links.map(([label, href]) => (
+                              <a key={label} href={href} {...linkProps}>
+                                {label}
+                              </a>
+                            ))}
+                          </div>
+                          <button type="button" onClick={() => setOpenNotes((current) => new Set(current.has(problemId) ? [...current].filter((id) => id !== problemId) : [...current, problemId]))}>
+                            Notes {notes.length}
+                          </button>
+                        </div>
                       </article>
                     );
                   })
