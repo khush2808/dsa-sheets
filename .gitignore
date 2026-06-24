@@ -4,3 +4,7 @@ node_modules/
 .vercel/
 .vercel
 .env
+.next/
+next-app/.next/
+next-app/out/
+dist-static/

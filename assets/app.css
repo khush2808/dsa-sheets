@@ -26,24 +26,24 @@
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #10130f;
-  --ink: #f3f4ed;
-  --muted: #aab19f;
-  --line: #31392f;
-  --surface: #181d17;
-  --surface-2: #222b20;
-  --overlay: rgba(24, 29, 23, 0.82);
-  --side-bg: rgba(18, 22, 17, 0.86);
-  --hero-bg: #0d1715;
-  --section-bg: #dfe8cf;
-  --section-ink: #11150f;
-  --section-muted: #4f5a49;
-  --button-bg: #dfe8cf;
-  --button-ink: #11150f;
-  --ok: #67d39b;
-  --warn: #f2bc59;
-  --hard: #ff7484;
-  --shadow: 0 18px 50px rgba(0, 0, 0, 0.32);
+  --bg: #0d1117;
+  --ink: #e7edf5;
+  --muted: #95a3b8;
+  --line: #263244;
+  --surface: #111827;
+  --surface-2: #172033;
+  --overlay: rgba(17, 24, 39, 0.84);
+  --side-bg: rgba(13, 17, 23, 0.9);
+  --hero-bg: #0b1220;
+  --section-bg: #162033;
+  --section-ink: #e7edf5;
+  --section-muted: #9fb4d0;
+  --button-bg: #d8e4f2;
+  --button-ink: #0d1117;
+  --ok: #54d492;
+  --warn: #f4b95a;
+  --hard: #ff6b81;
+  --shadow: 0 18px 50px rgba(0, 0, 0, 0.36);
 }
 
 * {
@@ -186,6 +186,84 @@ a {
   border-radius: 0.5rem;
   background: var(--surface);
   padding: 0.75rem;
+}
+
+.account-panel {
+  margin-bottom: 1.25rem;
+}
+
+.account-card {
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  background: var(--surface);
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.account-card b {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 0.86rem;
+}
+
+.account-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.account-card label {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.account-card input,
+.account-card button {
+  width: 100%;
+  min-width: 0;
+  min-height: 2.25rem;
+  border: 1px solid var(--line);
+  border-radius: 0.45rem;
+  background: var(--surface-2);
+  color: var(--ink);
+  padding: 0 0.65rem;
+  font: inherit;
+}
+
+.account-card button {
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.auth-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.sync-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: var(--muted);
+}
+
+.sync-dot.syncing {
+  background: var(--warn);
+}
+
+.sync-dot.synced {
+  background: var(--ok);
+}
+
+.sync-dot.error {
+  background: var(--hard);
 }
 
 .link-target-panel h2 {
@@ -598,6 +676,31 @@ a {
   gap: 1rem;
 }
 
+.section-collapse {
+  width: 1.75rem;
+  height: 1.75rem;
+  flex: 0 0 auto;
+  border: 1px solid color-mix(in srgb, var(--section-bg), var(--section-ink) 22%);
+  border-radius: 0.4rem;
+  background: color-mix(in srgb, var(--section-bg), var(--section-ink) 8%);
+  color: var(--section-ink);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.section-collapse span {
+  width: 0.48rem;
+  height: 0.48rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg) translateY(-0.12rem);
+}
+
+.section-collapse[aria-expanded="false"] span {
+  transform: rotate(-45deg) translateX(-0.08rem);
+}
+
 .section-card h3 {
   margin: 0;
   font-size: 1.08rem;
@@ -632,13 +735,12 @@ a {
 }
 
 .section-done-control {
-  width: 2.25rem;
-  height: 2.25rem;
-  border-radius: 999px;
+  width: auto;
+  height: auto;
   display: grid;
   place-items: center;
-  background: color-mix(in srgb, var(--section-bg), var(--section-ink) 10%);
-  border: 1px solid color-mix(in srgb, var(--section-bg), var(--section-ink) 22%);
+  background: transparent;
+  border: 0;
   cursor: pointer;
 }
 

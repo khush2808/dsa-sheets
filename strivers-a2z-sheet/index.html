@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Striver A2Z Sheet</title>
-    <link rel="stylesheet" href="../assets/app.css?v=13" />
+    <link rel="stylesheet" href="../assets/app.css?v=14" />
   </head>
   <body>
     <div class="shell">
@@ -31,6 +31,8 @@
           <a href="../neetcode-250/">NeetCode 250</a>
           <a href="../neetcode-150/">NeetCode 150</a>
           <a href="../blind-75/">NeetCode Blind 75</a>
+        </nav>
+        <section class="account-panel" aria-label="Account"></section>
         </nav>
         <h2>Sections</h2>
         <div class="category-list"></div>
@@ -81,6 +83,8 @@
         </section>
       </main>
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../assets/supabase-config.js?v=1"></script>
     <script>
       window.SHEET_CONFIG = {
         type: 'striver',
@@ -92,6 +96,6 @@
         dataUrl: '../data/strivers-a2z-problems.json'
       };
     </script>
-    <script src="../assets/app.js?v=13"></script>
+    <script src="../assets/app.js?v=14"></script>
   </body>
 </html>

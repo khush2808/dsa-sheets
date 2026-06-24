@@ -1,5 +1,5 @@
 {
   "cleanUrls": true,
   "trailingSlash": true,
-  "outputDirectory": "."
+  "outputDirectory": "dist-static"
 }

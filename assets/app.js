@@ -8,12 +8,24 @@ const state = {
   linkTarget: localStorage.getItem('dsaSheetLinkTarget') || 'same',
   progress: {},
   openNotes: new Set(),
-  celebratingSections: new Set()
+  celebratingSections: new Set(),
+  collapsedSections: new Set(JSON.parse(localStorage.getItem('dsaSheetCollapsedSections') || '[]')),
+  supabase: null,
+  user: null,
+  authStatus: 'local',
+  syncStatus: 'local'
 };
 
 const $ = (selector) => document.querySelector(selector);
 
 const config = window.SHEET_CONFIG;
+
+const createSupabaseClient = () => {
+  const supabaseGlobal = window.supabase;
+  const supabaseConfig = window.DSA_SUPABASE_CONFIG;
+  if (!supabaseGlobal || !supabaseConfig?.url || !supabaseConfig?.publishableKey) return null;
+  return supabaseGlobal.createClient(supabaseConfig.url, supabaseConfig.publishableKey);
+};
 
 const escapeHtml = (value) =>
   String(value ?? '')
@@ -34,6 +46,12 @@ const slug = (value) =>
     .replace(/&/g, 'and')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
+
+const progressStorageKey = 'dsaSheetProblemProgress:v1';
+
+const writeLocalProgress = (records) => {
+  localStorage.setItem(progressStorageKey, JSON.stringify(records));
+};
 
 const problemProgressId = (problem) =>
   [config.type, problem.problem_id || problem.code || problem.leetcode_slug || slug(problem.problem_name)].join(':');
@@ -62,18 +80,12 @@ const shouldKeepProgressRecord = (record = {}) =>
   Boolean(record.completed) || noteCount(record);
 
 const createLocalProgressAdapter = () => {
-  const storageKey = 'dsaSheetProblemProgress:v1';
-
   const read = () => {
     try {
-      return JSON.parse(localStorage.getItem(storageKey) || '{}');
+      return JSON.parse(localStorage.getItem(progressStorageKey) || '{}');
     } catch {
       return {};
     }
-  };
-
-  const write = (records) => {
-    localStorage.setItem(storageKey, JSON.stringify(records));
   };
 
   const applyProblemUpdate = (records, problemId, value, updatedAt) => {
@@ -105,7 +117,7 @@ const createLocalProgressAdapter = () => {
     async saveProblem(problemId, value) {
       const records = read();
       applyProblemUpdate(records, problemId, value, new Date().toISOString());
-      write(records);
+      writeLocalProgress(records);
       return this.loadAll();
     },
     async saveProblems(updates) {
@@ -114,7 +126,7 @@ const createLocalProgressAdapter = () => {
       updates.forEach(({ problemId, value }) => {
         applyProblemUpdate(records, problemId, value, updatedAt);
       });
-      write(records);
+      writeLocalProgress(records);
       return this.loadAll();
     }
   };
@@ -128,12 +140,156 @@ const createProgressRepository = (adapter) => ({
 
 const progressRepository = createProgressRepository(createLocalProgressAdapter());
 
+const remoteRowsToProgress = (progressRows = [], noteRows = []) => {
+  const records = {};
+  progressRows.forEach((row) => {
+    records[row.problem_id] = {
+      ...records[row.problem_id],
+      completed: row.completed,
+      updatedAt: row.updated_at,
+      notes: []
+    };
+  });
+  noteRows.forEach((row) => {
+    if (!records[row.problem_id]) {
+      records[row.problem_id] = { notes: [] };
+    }
+    records[row.problem_id].notes.push({
+      id: row.id,
+      text: row.body,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    });
+  });
+  return Object.fromEntries(
+    Object.entries(records).map(([problemId, record]) => [
+      problemId,
+      {
+        ...record,
+        notes: normalizeNotes(record)
+      }
+    ])
+  );
+};
+
+const loadRemoteProgress = async () => {
+  if (!state.supabase || !state.user) return {};
+  const [{ data: progressRows, error: progressError }, { data: noteRows, error: notesError }] = await Promise.all([
+    state.supabase.from('user_problem_progress').select('problem_id, completed, updated_at'),
+    state.supabase.from('user_problem_notes').select('id, problem_id, body, created_at, updated_at').order('created_at')
+  ]);
+  if (progressError || notesError) {
+    throw progressError || notesError;
+  }
+  return remoteRowsToProgress(progressRows, noteRows);
+};
+
+const saveRemoteProblem = async (problemId, record) => {
+  if (!state.supabase || !state.user) return;
+  const notes = normalizeNotes(record);
+  const updatedAt = record.updatedAt || new Date().toISOString();
+  const { error: progressError } = await state.supabase.from('user_problem_progress').upsert({
+    user_id: state.user.id,
+    problem_id: problemId,
+    completed: Boolean(record.completed),
+    updated_at: updatedAt
+  });
+  if (progressError) throw progressError;
+
+  const noteIds = notes.map((note) => note.id);
+  let deleteQuery = state.supabase
+    .from('user_problem_notes')
+    .delete()
+    .eq('user_id', state.user.id)
+    .eq('problem_id', problemId);
+  if (noteIds.length) {
+    deleteQuery = deleteQuery.not('id', 'in', `(${noteIds.map((id) => `"${id}"`).join(',')})`);
+  }
+  const { error: deleteError } = await deleteQuery;
+  if (deleteError) throw deleteError;
+
+  if (!notes.length) return;
+  const { error: notesError } = await state.supabase.from('user_problem_notes').upsert(
+    notes.map((note) => ({
+      id: note.id,
+      user_id: state.user.id,
+      problem_id: problemId,
+      body: note.text,
+      created_at: note.createdAt || updatedAt,
+      updated_at: note.updatedAt || updatedAt
+    }))
+  );
+  if (notesError) throw notesError;
+};
+
+const saveRemoteProblems = async (progress) => {
+  if (!state.supabase || !state.user) return;
+  for (const [problemId, record] of Object.entries(progress)) {
+    await saveRemoteProblem(problemId, record);
+  }
+};
+
+const mergeProgressRecords = (localRecords, remoteRecords) => {
+  const merged = { ...remoteRecords };
+  Object.entries(localRecords).forEach(([problemId, localRecord]) => {
+    const remoteRecord = merged[problemId] || { notes: [] };
+    const localUpdated = Date.parse(localRecord.updatedAt || '') || 0;
+    const remoteUpdated = Date.parse(remoteRecord.updatedAt || '') || 0;
+    const notesById = new Map(normalizeNotes(remoteRecord).map((note) => [note.id, note]));
+    normalizeNotes(localRecord).forEach((note) => {
+      const existing = notesById.get(note.id);
+      const noteUpdated = Date.parse(note.updatedAt || '') || 0;
+      const existingUpdated = Date.parse(existing?.updatedAt || '') || 0;
+      if (!existing || noteUpdated >= existingUpdated) {
+        notesById.set(note.id, note);
+      }
+    });
+    merged[problemId] = {
+      ...remoteRecord,
+      completed: localUpdated >= remoteUpdated ? Boolean(localRecord.completed) : Boolean(remoteRecord.completed),
+      updatedAt: new Date(Math.max(localUpdated, remoteUpdated, Date.now())).toISOString(),
+      notes: [...notesById.values()]
+    };
+  });
+  return Object.fromEntries(Object.entries(merged).filter(([, record]) => shouldKeepProgressRecord(record)));
+};
+
+const persistRemoteIfSignedIn = async (problemId, record) => {
+  if (!state.user) return;
+  state.syncStatus = 'syncing';
+  renderAccountPanel();
+  try {
+    await saveRemoteProblem(problemId, record);
+    state.syncStatus = 'synced';
+  } catch (error) {
+    console.error(error);
+    state.syncStatus = 'error';
+  }
+  renderAccountPanel();
+};
+
+const persistAllRemoteIfSignedIn = async () => {
+  if (!state.user) return;
+  state.syncStatus = 'syncing';
+  renderAccountPanel();
+  try {
+    await saveRemoteProblems(state.progress);
+    state.syncStatus = 'synced';
+  } catch (error) {
+    console.error(error);
+    state.syncStatus = 'error';
+  }
+  renderAccountPanel();
+};
+
 const updateProblemProgress = async (problemId, value) => {
   state.progress = await progressRepository.saveProblem(problemId, value);
+  await persistRemoteIfSignedIn(problemId, state.progress[problemId] || { notes: [] });
 };
 
 const updateManyProblemProgress = async (updates) => {
   state.progress = await progressRepository.saveProblems(updates);
+  await persistAllRemoteIfSignedIn();
 };
 
 const renderNotesButton = (problemId, progress) => {
@@ -183,6 +339,10 @@ const sectionProgress = (problems) => {
 };
 
 const sectionKey = (name) => slug(name || 'uncategorized');
+
+const saveCollapsedSections = () => {
+  localStorage.setItem('dsaSheetCollapsedSections', JSON.stringify([...state.collapsedSections]));
+};
 
 const celebrateSection = (key) => {
   state.celebratingSections.add(key);
@@ -323,6 +483,130 @@ const renderLinkTargetControl = () => {
   $('#linkTarget').value = state.linkTarget;
 };
 
+const syncLabel = () => {
+  if (!state.user) return 'Local only';
+  if (state.syncStatus === 'syncing') return 'Syncing...';
+  if (state.syncStatus === 'error') return 'Sync issue';
+  return 'Synced';
+};
+
+const renderAccountPanel = () => {
+  const panel = $('.account-panel');
+  if (!panel) return;
+  if (state.authStatus === 'loading') {
+    panel.innerHTML = '<h2>Account</h2><div class="account-card"><span class="sync-dot"></span><p>Checking session...</p></div>';
+    return;
+  }
+  if (state.user) {
+    const label = state.user.email || 'Signed in';
+    panel.innerHTML = `<h2>Account</h2>
+      <div class="account-card">
+        <div>
+          <b>${escapeHtml(label)}</b>
+          <p><span class="sync-dot ${state.syncStatus}"></span>${escapeHtml(syncLabel())}</p>
+        </div>
+        <button type="button" data-auth-action="sign-out">Sign out</button>
+      </div>`;
+    return;
+  }
+  panel.innerHTML = `<h2>Account</h2>
+    <div class="account-card">
+      <label for="authEmail">Email</label>
+      <input id="authEmail" type="email" placeholder="you@example.com" autocomplete="email" />
+      <button type="button" data-auth-action="email">Send magic link</button>
+      <div class="auth-buttons">
+        <button type="button" data-auth-provider="google">Google</button>
+        <button type="button" data-auth-provider="github">GitHub</button>
+      </div>
+      <p><span class="sync-dot"></span>${escapeHtml(syncLabel())}</p>
+    </div>`;
+};
+
+const redirectUrl = () => `${location.origin}${location.pathname}`;
+
+const signInWithEmail = async () => {
+  if (!state.supabase) return;
+  const email = $('#authEmail')?.value.trim();
+  if (!email) return;
+  state.syncStatus = 'syncing';
+  renderAccountPanel();
+  const { error } = await state.supabase.auth.signInWithOtp({
+    email,
+    options: {
+      emailRedirectTo: redirectUrl()
+    }
+  });
+  state.syncStatus = error ? 'error' : 'synced';
+  renderAccountPanel();
+};
+
+const signInWithProvider = async (provider) => {
+  if (!state.supabase) return;
+  await state.supabase.auth.signInWithOAuth({
+    provider,
+    options: {
+      redirectTo: redirectUrl()
+    }
+  });
+};
+
+const signOut = async () => {
+  if (!state.supabase) return;
+  await state.supabase.auth.signOut();
+  state.user = null;
+  state.authStatus = 'local';
+  state.syncStatus = 'local';
+  renderAccountPanel();
+};
+
+const syncSignedInProgress = async () => {
+  if (!state.supabase || !state.user) return;
+  state.syncStatus = 'syncing';
+  renderAccountPanel();
+  try {
+    const localRecords = await progressRepository.loadAll();
+    const remoteRecords = await loadRemoteProgress();
+    state.progress = mergeProgressRecords(localRecords, remoteRecords);
+    writeLocalProgress(state.progress);
+    await saveRemoteProblems(state.progress);
+    state.syncStatus = 'synced';
+    rerender();
+  } catch (error) {
+    console.error(error);
+    state.syncStatus = 'error';
+  }
+  renderAccountPanel();
+};
+
+const initAuth = async () => {
+  state.supabase = createSupabaseClient();
+  if (!state.supabase) {
+    state.authStatus = 'local';
+    state.syncStatus = 'local';
+    renderAccountPanel();
+    return;
+  }
+  state.authStatus = 'loading';
+  renderAccountPanel();
+  const { data } = await state.supabase.auth.getSession();
+  state.user = data.session?.user || null;
+  state.authStatus = state.user ? 'signed-in' : 'local';
+  state.syncStatus = state.user ? 'syncing' : 'local';
+  renderAccountPanel();
+  if (state.user) {
+    await syncSignedInProgress();
+  }
+  state.supabase.auth.onAuthStateChange(async (_event, session) => {
+    state.user = session?.user || null;
+    state.authStatus = state.user ? 'signed-in' : 'local';
+    state.syncStatus = state.user ? 'syncing' : 'local';
+    renderAccountPanel();
+    if (state.user) {
+      await syncSignedInProgress();
+    }
+  });
+};
+
 const renderRows = () => {
   const problems = filteredProblems();
   const headLabel = state.category === 'all' ? 'Sections' : problems[0] ? groupName(problems[0]) : 'Section';
@@ -342,6 +626,7 @@ const renderRows = () => {
         const key = sectionKey(name);
         const groupProgress = sectionProgress(groupProblems);
         const groupProblemIds = groupProblems.map(problemProgressId).join(' ');
+        const isCollapsed = state.collapsedSections.has(key);
         const rows = groupProblems
           .map((problem) => {
             const mainHref = primaryLink(problem);
@@ -375,6 +660,9 @@ const renderRows = () => {
 
         return `<section class="problem-section ${groupProgress.isComplete ? 'section-complete' : ''} ${state.celebratingSections.has(key) ? 'section-just-completed' : ''}" data-section-key="${escapeAttr(key)}">
           <header class="section-card">
+            <button class="section-collapse" type="button" data-section-collapse="${escapeAttr(key)}" aria-label="${isCollapsed ? 'Expand' : 'Collapse'} ${escapeAttr(name)}" aria-expanded="${!isCollapsed}">
+              <span aria-hidden="true"></span>
+            </button>
             <div>
               <h3>${escapeHtml(name)}</h3>
               <p>${escapeHtml(config.type === 'striver' ? 'Section' : 'Pattern')}</p>
@@ -386,7 +674,7 @@ const renderRows = () => {
               <span>${groupProgress.completed}/${groupProgress.total}</span>
             </div>
           </header>
-          <div class="section-problems">${rows}</div>
+          <div class="section-problems" ${isCollapsed ? 'hidden' : ''}>${rows}</div>
         </section>`;
       })
       .join('') || `<div class="empty">No problems match the current filters.</div>`;
@@ -459,8 +747,10 @@ const init = async () => {
 
   renderFilters();
   renderLinkTargetControl();
+  renderAccountPanel();
   renderCanvas();
   rerender();
+  await initAuth();
 
   $('#search').addEventListener('input', (event) => {
     state.query = event.target.value;
@@ -486,6 +776,21 @@ const init = async () => {
     state.linkTarget = event.target.value;
     localStorage.setItem('dsaSheetLinkTarget', state.linkTarget);
     rerender();
+  });
+  $('.side').addEventListener('click', async (event) => {
+    const actionButton = event.target.closest('[data-auth-action]');
+    if (actionButton?.dataset.authAction === 'email') {
+      await signInWithEmail();
+      return;
+    }
+    if (actionButton?.dataset.authAction === 'sign-out') {
+      await signOut();
+      return;
+    }
+    const providerButton = event.target.closest('[data-auth-provider]');
+    if (providerButton) {
+      await signInWithProvider(providerButton.dataset.authProvider);
+    }
   });
   $('#randomButton').addEventListener('click', () => {
     const problems = filteredProblems();
@@ -549,6 +854,19 @@ const init = async () => {
     rerender();
   });
   $('.problem-list').addEventListener('click', async (event) => {
+    const collapseButton = event.target.closest('button[data-section-collapse]');
+    if (collapseButton) {
+      const key = collapseButton.dataset.sectionCollapse;
+      if (state.collapsedSections.has(key)) {
+        state.collapsedSections.delete(key);
+      } else {
+        state.collapsedSections.add(key);
+      }
+      saveCollapsedSections();
+      rerender();
+      return;
+    }
+
     const toggle = event.target.closest('button[data-notes-toggle]');
     if (toggle) {
       const problemId = toggle.dataset.notesToggle;
