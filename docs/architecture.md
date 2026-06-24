@@ -1,66 +1,71 @@
 # Architecture
 
-## What This Project Is
+## Overview
 
-DSA Sheets is a static multi-page browser for curated DSA problem lists. It serves:
+DSA Sheets has two frontend implementations that share the same problem data and Supabase backend.
 
-- a landing page at `index.html`
-- one route folder per sheet, for example `neetcode-150/` and `strivers-a2z-sheet/`
-- shared UI behavior in `assets/app.js`
-- shared route styling in `assets/app.css`
-- landing page styling in `assets/landing.css`
-- extracted JSON problem data in `data/`
-- generated Excel exports in `sheets/`
-
-Vite serves the repository root as a static site during local development.
-
-## Important Runtime Pieces
-
-Each sheet route defines `window.SHEET_CONFIG` in its `index.html`. The shared script reads that config to load the right JSON file and render the route.
-
-The shared app currently owns:
-
-- search
-- category/pattern filtering
-- difficulty filtering
-- NeetCode Pro filtering
-- theme toggle
-- link target preference
-- Google problem search links
-- problem completion checkmarks
-- section completion checkmarks
-- notes per problem
-- completed-section animation
-
-## Data Model Today
-
-Static problem data comes from JSON files:
-
-- TUF/Striver-like problems usually have `problem_id`
-- NeetCode problems usually have `code` and `leetcode_slug`
-
-The stable progress ID is built in `assets/app.js`:
-
-```js
-[config.type, problem.problem_id || problem.code || problem.leetcode_slug || slug(problem.problem_name)].join(':')
+```txt
+data/*.json + sheets/*.xlsx
+        |
+        +-- old/static/ -> GitHub Pages -> dist-static/
+        |
+        +-- next-app/ -> Vercel -> next-app/out/
+        |
+        +-- Supabase Auth + Postgres/RLS for signed-in progress and notes
 ```
 
-Examples:
+The legacy static app lives in `old/static/`; it is older, but it is still the GitHub Pages production source. The Next.js app is newer and is the Vercel path. Keep both deployable until the owner explicitly chooses a single frontend.
 
-- `neetcode:0217-contains-duplicate`
-- `striver:911`
+## Legacy Static App
 
-This ID should remain stable when moving to backend storage.
+Runtime files:
 
-## User Progress Today
+- `old/static/index.html` - landing page.
+- `old/static/` route folders such as `neetcode-150/` and `strivers-a2z-sheet/`.
+- `old/static/assets/app.js` - route UI, auth, local-first progress, Supabase sync, notes, filters.
+- `old/static/assets/app.css` - route styling.
+- `old/static/assets/landing.css` - landing page styling.
+- `old/static/assets/supabase-config.js` - generated public Supabase browser config.
 
-User progress is stored in localStorage under:
+Each route folder defines `window.SHEET_CONFIG`, then loads shared assets:
+
+```html
+<script src="../assets/supabase-config.js?v=1"></script>
+<script src="../assets/app.js?v=14"></script>
+```
+
+When changing `old/static/assets/app.js` or `old/static/assets/app.css`, bump route asset query strings if browser cache invalidation matters.
+
+GitHub Pages deployment does not serve the repo root directly. `npm run build` stages `old/static/` into `dist-static/` using `scripts/stage-static-site.mjs`, and the Pages workflow uploads that directory. The staged output still has root-style public routes such as `/neetcode-150/`.
+
+## Next.js App
+
+Runtime files:
+
+- `next-app/app/page.jsx` - Next landing page.
+- `next-app/app/[sheet]/page.jsx` - generated sheet routes.
+- `next-app/components/SheetApp.jsx` - interactive client app.
+- `next-app/lib/progress.js` - local/Supabase progress adapters and merge logic.
+- `next-app/lib/sheets.js` - sheet metadata.
+- `next-app/app/styles.css` - Next app styling.
+
+`next-app/next.config.mjs` uses `output: 'export'`, so Vercel serves a static export from `next-app/out`. Browser code talks directly to Supabase with the publishable key and RLS policies.
+
+## Progress Storage
+
+Anonymous/local cache uses:
 
 ```txt
 dsaSheetProblemProgress:v1
 ```
 
-Current record shape:
+Stable problem IDs are generated from sheet type plus the strongest available problem identifier:
+
+```js
+[type, problem_id || code || leetcode_slug || slug(problem_name)].join(':')
+```
+
+Record shape:
 
 ```json
 {
@@ -74,45 +79,35 @@ Current record shape:
         "updatedAt": "2026-06-18T14:16:53.914Z"
       }
     ],
-    "updatedAt": "2026-06-18T14:16:53.933Z"
+    "noteTombstones": {
+      "note-1781792213883": "2026-06-18T15:00:00.000Z"
+    },
+    "updatedAt": "2026-06-18T15:00:00.000Z"
   }
 }
 ```
 
-The app already wraps storage behind:
+`noteTombstones` preserve offline/local deletions so old remote notes do not reappear on the next merge.
 
-- `createLocalProgressAdapter()`
-- `createProgressRepository(adapter)`
-- `updateProblemProgress(problemId, value)`
-- `updateManyProblemProgress(updates)`
+## Supabase Runtime
 
-That boundary should be preserved. A future backend integration should add an API adapter instead of spreading fetch calls through rendering/event code.
+Supabase stores signed-in data in:
 
-## Deployment
+- `public.user_problem_progress`
+- `public.user_problem_notes`
 
-The project is deployed from Git through Vercel. The current preference is to keep deployment automatic:
+Both tables have RLS policies that restrict access to `auth.uid() = user_id`. The frontend uses direct Supabase client calls; there are currently no custom API routes for progress.
 
-1. implement locally
-2. run validation/smoke tests
-3. commit
-4. push to GitHub
-5. let Vercel deploy
+## Organization Notes
 
-Static assets in sheet routes use query-string cache busting like:
+Safe cleanup:
 
-```html
-<script src="../assets/app.js?v=13"></script>
-```
+- Delete ignored build outputs: `dist-static/`, `next-app/.next/`, `next-app/out/`.
+- Delete local junk: `.DS_Store`, empty temp files.
+- Restore `sheets/*.xlsx` after validation unless data changed intentionally.
 
-When changing `assets/app.js` or `assets/app.css`, bump the route asset version across sheet pages.
+Risky moves:
 
-## Validation
-
-Run:
-
-```sh
-npm run validate
-```
-
-For UI behavior changes, also run a browser smoke test against a representative route such as `/neetcode-150/`.
-
+- Moving `old/static/` route folders or assets will break GitHub Pages unless `scripts/stage-static-site.mjs`, route HTML, docs, and smoke tests are updated together.
+- Moving `data/` affects the static app, Next app, and Excel generation.
+- Moving `sheets/` affects GitHub Pages downloads and docs.

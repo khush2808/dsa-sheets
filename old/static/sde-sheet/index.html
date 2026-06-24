@@ -3,15 +3,15 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>NeetCode 250</title>
-    <link rel="stylesheet" href="../assets/app.css?v=13" />
+    <title>SDE Sheet</title>
+    <link rel="stylesheet" href="../assets/app.css?v=14" />
   </head>
   <body>
     <div class="shell">
       <aside class="side">
         <div class="brand">
           <div class="brand-main">
-          <div class="mark">250</div>
+          <div class="mark">SDE</div>
           <div>
             <h1></h1>
             <p></p>
@@ -25,14 +25,16 @@
         <nav class="nav-links">
           <a href="../strivers-a2z-sheet/">Striver A2Z</a>
           <a href="../blind-75-sheet/">Blind 75 Sheet</a>
-          <a href="../sde-sheet/">SDE Sheet</a>
+          <a aria-current="page" href="../sde-sheet/">SDE Sheet</a>
           <a href="../striver-79-sheet/">Striver 79</a>
           <a href="../neetcode-all/">NeetCode All</a>
-          <a aria-current="page" href="../neetcode-250/">NeetCode 250</a>
+          <a href="../neetcode-250/">NeetCode 250</a>
           <a href="../neetcode-150/">NeetCode 150</a>
           <a href="../blind-75/">NeetCode Blind 75</a>
         </nav>
-        <h2>Patterns</h2>
+        <section class="account-panel" aria-label="Account"></section>
+        </nav>
+        <h2>Sections</h2>
         <div class="category-list"></div>
       </aside>
       <main class="main">
@@ -73,7 +75,7 @@
         <section class="problem-area">
           <div class="problem-head">
             <span>Problem</span>
-            <span>Pattern</span>
+            <span>Section</span>
             <span>Level</span>
             <span class="result-count">0 shown</span>
           </div>
@@ -81,19 +83,19 @@
         </section>
       </main>
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../assets/supabase-config.js?v=1"></script>
     <script>
       window.SHEET_CONFIG = {
-        type: 'neetcode',
-        initialList: 'neetcode250',
-        lockList: true,
-        title: 'NeetCode 250',
-        shortTitle: 'NeetCode 250',
-        subtitle: '250 problems',
-        kicker: 'neetcode-250',
-        description: 'The NeetCode 250 track as a focused sheet with pattern filters, problem links, solutions, and videos.',
-        dataUrl: '../data/neetcode-problems.json'
+        type: 'striver',
+        title: 'SDE Sheet',
+        shortTitle: 'SDE Sheet',
+        subtitle: '191 problems',
+        kicker: 'sde-sheet',
+        description: 'Striver’s SDE Sheet with frequently asked interview problems, article links, LeetCode links, videos, Plus, and editorials.',
+        dataUrl: '../data/sde-sheet-problems.json'
       };
     </script>
-    <script src="../assets/app.js?v=13"></script>
+    <script src="../assets/app.js?v=14"></script>
   </body>
 </html>

@@ -1,151 +1,111 @@
-# Auth and Backend Plan
+# Auth and Backend
 
-## Recommendation
+## Current Stack
 
-Use:
+The project uses:
 
-- **Vercel** for hosting, preview deploys, production deploys, serverless API routes/functions, and environment variables.
-- **Supabase Auth + Supabase Postgres** for authentication, user records, progress storage, notes, and Row Level Security.
-- Keep the current frontend storage repository shape and add a backend adapter that can sync localStorage records into Supabase after sign-in.
+- Supabase Auth for Email, Google, and GitHub sign-in.
+- Supabase Postgres for progress and notes.
+- Supabase Row Level Security so users can only read/write their own rows.
+- Browser-side Supabase client calls with the publishable key.
+- localStorage as anonymous mode and offline cache.
 
-This is the best fit for the project goal: low maintenance, low owner involvement, Git-backed deploys, and a backend that future agents can operate through migrations and environment variables.
+There are currently no custom API routes for progress. Both the static app and the Next app talk directly to Supabase.
 
-## Why This Stack
+## Database Schema
 
-### Vercel
+Current migrations live in `supabase/migrations/`.
 
-The site already deploys on Vercel. Vercel Functions provide server-side endpoints without managing servers, and Vercel environment variables keep service keys outside source code.
-
-Official docs:
-
-- https://vercel.com/docs/functions
-- https://vercel.com/docs/environment-variables
-
-### Supabase
-
-Supabase gives us Auth, Postgres, hosted APIs, and Row Level Security in one managed system. Supabase Auth integrates with database security, and RLS lets us enforce that users only read/write their own progress.
-
-Official docs:
-
-- https://supabase.com/docs/guides/auth
-- https://supabase.com/docs/guides/database/postgres/row-level-security
-
-## Alternative Stack
-
-If the priority becomes the most polished auth UI and social login flows, use:
-
-- Clerk for auth
-- Neon or Supabase Postgres for data
-- Vercel Functions for API endpoints
-
-Clerk has excellent prebuilt UI and Next.js integration, but it adds a second core service. For this project, Supabase Auth is simpler because auth, database, and authorization live together.
-
-Official Clerk docs:
-
-- https://clerk.com/docs
-- https://clerk.com/docs/nextjs/getting-started/quickstart
-
-## Proposed Database Shape
-
-Start with two tables instead of storing notes as JSON. This makes future note editing, deleting, and sorting cleaner.
+Progress:
 
 ```sql
-create table user_problem_progress (
+create table public.user_problem_progress (
   user_id uuid not null references auth.users(id) on delete cascade,
   problem_id text not null,
   completed boolean not null default false,
   updated_at timestamptz not null default now(),
   primary key (user_id, problem_id)
 );
+```
 
-create table user_problem_notes (
-  id uuid primary key default gen_random_uuid(),
+Notes:
+
+```sql
+create table public.user_problem_notes (
+  id text not null,
   user_id uuid not null references auth.users(id) on delete cascade,
   problem_id text not null,
   body text not null default '',
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  primary key (user_id, id)
 );
 ```
 
-RLS policy direction:
+RLS policies allow `select`, `insert`, `update`, and `delete` only when:
 
-- users can select/insert/update/delete rows where `auth.uid() = user_id`
-- no public access to progress or notes tables
+```sql
+auth.uid() = user_id
+```
 
-## API Shape
+## Security Notes
 
-Keep the frontend repository API close to what already exists:
+The browser only receives public Supabase values:
+
+- `NEXT_PUBLIC_SUPABASE_URL` or `SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` or `SUPABASE_PUBLISHABLE_KEY`
+
+Never expose service-role keys in browser code.
+
+The migration `20260624193446_drop_rls_auto_enable.sql` removes an old `SECURITY DEFINER` helper function and its event trigger:
+
+```sql
+drop event trigger if exists ensure_rls;
+drop function if exists public.rls_auto_enable();
+```
+
+This fixed Supabase Advisor warnings where `public.rls_auto_enable()` was callable by `anon` and `authenticated`.
+
+## Frontend Sync Model
+
+Both frontends use the same conceptual adapter shape:
 
 ```ts
-type ProgressRecord = {
-  completed?: boolean;
-  notes: Array<{
-    id: string;
-    text: string;
-    createdAt: string;
-    updatedAt: string;
-  }>;
-  updatedAt?: string;
-};
+loadAll()
+saveProblem(problemId, value)
+saveProblems(updates)
 ```
 
-Suggested endpoints:
+Anonymous mode:
 
-- `GET /api/progress`
-- `PATCH /api/progress/:problemId`
-- `PATCH /api/progress/bulk`
-- `POST /api/progress/:problemId/notes`
-- `PATCH /api/progress/:problemId/notes/:noteId`
-- `DELETE /api/progress/:problemId/notes/:noteId`
+- Read/write `localStorage`.
+- Never block page rendering on auth or network calls.
 
-If we move to direct Supabase client access with RLS, these can be replaced by Supabase client calls. The repository boundary should remain either way.
+Signed-in mode:
 
-## Migration Path
+1. Load local records.
+2. Load remote records from Supabase.
+3. Merge by timestamp.
+4. Save merged records locally.
+5. Push merged records back to Supabase.
 
-1. Keep localStorage as the anonymous mode.
-2. Add auth UI.
-3. Add Supabase schema and RLS.
-4. Add an API/Supabase progress adapter with the same methods as the local adapter:
-   - `loadAll()`
-   - `saveProblem(problemId, value)`
-   - `saveProblems(updates)`
-5. On sign-in, read localStorage and ask whether to merge local progress into the account.
-6. After successful sync, keep localStorage as a cache/offline fallback.
+Notes merge by `id`. `noteTombstones` preserve local/offline deletions so older remote notes do not reappear later.
 
-## Sync Rules
+## Remaining External Setup
 
-Recommended merge behavior:
+Code cannot fully complete these dashboard tasks:
 
-- `completed`: server wins only when local and server conflict with newer timestamps; otherwise choose the newest `updatedAt`.
-- notes: merge by note `id`; if IDs differ, keep both.
-- deleted notes: eventually add tombstones if cross-device sync becomes important.
+- Enable and configure Email Auth in Supabase if not already enabled.
+- Configure Google OAuth provider in Supabase and Google Cloud.
+- Configure GitHub OAuth provider in Supabase and GitHub Developer Settings.
+- Add all production and local redirect URLs to Supabase Auth URL Configuration.
+- Add public Supabase env vars to GitHub Pages and Vercel.
 
-For v1, keep it simple:
+See [OAuth Setup](./oauth-setup.md) and [Deployment and Environments](./deployment.md).
 
-- upload local records on first sign-in
-- then treat server as source of truth for signed-in users
+## Future Improvements
 
-## Framework Choice
-
-The current static Vite site can stay as-is for local-only features. For auth/API work, migrate to **Next.js on Vercel** or add a small API service.
-
-Recommendation: migrate to **Next.js on Vercel** when adding auth. It keeps frontend, API routes, auth middleware, and deployment in one place, which is easier for future automation.
-
-Migration does not need to rewrite everything at once:
-
-1. move static routes into Next pages/app routes
-2. keep JSON data files
-3. port `assets/app.js` behavior into components gradually
-4. add auth and backend sync behind the existing progress repository
-
-## Decision
-
-Default plan unless requirements change:
-
-```txt
-Next.js on Vercel + Supabase Auth + Supabase Postgres/RLS
-```
-
-This is the most convenient stack for a solo-owner project where future agents should be able to deploy changes without the owner manually operating infrastructure.
-
+- Add end-to-end auth tests once provider setup is stable.
+- Add a server/API layer only if direct Supabase client access becomes too limiting.
+- Add explicit sync conflict UI if cross-device edits become common.
+- Consider migrating fully to Next.js after GitHub Pages support is no longer needed or Next static export is accepted there.

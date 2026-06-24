@@ -1,6 +1,10 @@
-newfile.doc
 .DS_Store
 node_modules/
 .vercel/
 .vercel
 .env
+next-app/.env*.local
+.next/
+next-app/.next/
+next-app/out/
+dist-static/

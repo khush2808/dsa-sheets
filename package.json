@@ -4,11 +4,16 @@
   "description": "Extracted problem data and static sheet browsers for:",
   "main": "index.js",
   "scripts": {
-    "dev": "vite --host 0.0.0.0 --open /",
-    "preview": "vite preview --host 0.0.0.0 --open /",
+    "dev": "npm run build && npm run preview",
+    "dev:next": "npm run config:next-env && cd next-app && next dev",
+    "preview": "vite preview --outDir dist-static --host 0.0.0.0 --open /",
+    "build": "npm run config:supabase && node scripts/stage-static-site.mjs",
+    "build:next": "npm run config:next-env && cd next-app && next build",
+    "config:supabase": "node scripts/create-supabase-config.mjs",
+    "config:next-env": "node scripts/create-next-env.mjs",
     "extract:tuf": "node scripts/extract-tuf-sheets.mjs",
     "excel": "node scripts/create-excel.mjs",
-    "validate": "node --check assets/app.js && node --check scripts/create-excel.mjs && node --check scripts/extract-tuf-sheets.mjs && npm run excel"
+    "validate": "node --check old/static/assets/app.js && node --check scripts/supabase-env.mjs && node --check scripts/create-supabase-config.mjs && node --check scripts/create-next-env.mjs && node --check scripts/stage-static-site.mjs && node --check scripts/create-excel.mjs && node --check scripts/extract-tuf-sheets.mjs && npm run excel"
   },
   "repository": {
     "type": "git",
@@ -23,6 +28,10 @@
   },
   "homepage": "https://github.com/khush2808/dsa-sheets#readme",
   "dependencies": {
+    "@supabase/supabase-js": "^2.108.2",
+    "next": "^16.2.9",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
     "write-excel-file": "^4.0.7"
   },
   "devDependencies": {
