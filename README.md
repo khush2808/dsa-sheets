@@ -55,10 +55,24 @@ Routes: `/strivers-a2z-sheet/`, `/blind-75-sheet/`, `/sde-sheet/`, `/striver-79-
 ## Scripts
 
 - `npm run dev` - start Vite dev server with auto-reload.
+- `npm run dev:next` - generate `next-app/.env.local` from root/public env values and start the Next.js app.
 - `npm run preview` - preview the static site through Vite.
+- `npm run build` - generate static Supabase browser config and stage the GitHub Pages build in `dist-static/`.
+- `npm run build:next` - generate `next-app/.env.local` and static-export the Next.js app.
 - `npm run extract:tuf` - refresh the takeUforward sheet JSON files.
 - `npm run excel` - regenerate Excel exports.
 - `npm run validate` - syntax-check scripts and regenerate Excel exports.
+
+## Supabase Config
+
+Keep secrets in `.env` only. The browser app needs only:
+
+```sh
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
+```
+
+The static build writes these public values into `assets/supabase-config.js`. The Next scripts write the same public values into ignored `next-app/.env.local` before dev/build. For GitHub Pages, add repository secrets named `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`; for Vercel/Next, add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
 
 ## Project Notes
 
