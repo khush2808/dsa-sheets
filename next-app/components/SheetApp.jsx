@@ -281,7 +281,13 @@ export default function SheetApp({ sheet, initialProblems }) {
   };
 
   const deleteNote = (problemId, noteId) => {
-    updateProblem(problemId, { notes: normalizeNotes(progress[problemId]).filter((note) => note.id !== noteId) });
+    updateProblem(problemId, {
+      notes: normalizeNotes(progress[problemId]).filter((note) => note.id !== noteId),
+      noteTombstones: {
+        ...(progress[problemId]?.noteTombstones || {}),
+        [noteId]: new Date().toISOString()
+      }
+    });
   };
 
   const signInWithEmail = async (event) => {

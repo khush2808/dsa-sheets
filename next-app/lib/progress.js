@@ -3,7 +3,16 @@ export const progressStorageKey = 'dsaSheetProblemProgress:v1';
 export const normalizeNotes = (record = {}) =>
   Array.isArray(record.notes) ? record.notes.filter((note) => note && typeof note.text === 'string') : [];
 
+export const normalizeNoteTombstones = (record = {}) =>
+  Object.fromEntries(
+    Object.entries(record.noteTombstones || {}).filter(
+      ([noteId, deletedAt]) => typeof noteId === 'string' && noteId && typeof deletedAt === 'string' && !Number.isNaN(Date.parse(deletedAt))
+    )
+  );
+
 export const shouldKeepRecord = (record = {}) => Boolean(record.completed) || normalizeNotes(record).length > 0;
+
+export const shouldKeepStoredRecord = (record = {}) => shouldKeepRecord(record) || Object.keys(normalizeNoteTombstones(record)).length > 0;
 
 export const readLocalProgress = () => {
   try {
@@ -13,7 +22,8 @@ export const readLocalProgress = () => {
         problemId,
         {
           ...record,
-          notes: normalizeNotes(record)
+          notes: normalizeNotes(record),
+          noteTombstones: normalizeNoteTombstones(record)
         }
       ])
     );
@@ -31,10 +41,11 @@ export const applyProblemUpdate = (records, problemId, value, updatedAt = new Da
   next[problemId] = {
     ...next[problemId],
     notes: normalizeNotes(next[problemId]),
+    noteTombstones: normalizeNoteTombstones(next[problemId]),
     ...value,
     updatedAt
   };
-  if (!shouldKeepRecord(next[problemId])) delete next[problemId];
+  if (!shouldKeepStoredRecord(next[problemId])) delete next[problemId];
   return next;
 };
 
@@ -65,11 +76,12 @@ export const remoteRowsToProgress = (progressRows = [], noteRows = []) => {
     records[row.problem_id] = {
       completed: row.completed,
       updatedAt: row.updated_at,
-      notes: []
+      notes: [],
+      noteTombstones: {}
     };
   });
   noteRows.forEach((row) => {
-    records[row.problem_id] ||= { notes: [] };
+    records[row.problem_id] ||= { notes: [], noteTombstones: {} };
     records[row.problem_id].notes.push({
       id: row.id,
       text: row.body,
@@ -86,6 +98,10 @@ export const mergeProgress = (localRecords, remoteRecords) => {
     const remoteRecord = merged[problemId] || { notes: [] };
     const localUpdated = Date.parse(localRecord.updatedAt || '') || 0;
     const remoteUpdated = Date.parse(remoteRecord.updatedAt || '') || 0;
+    const noteTombstones = {
+      ...normalizeNoteTombstones(remoteRecord),
+      ...normalizeNoteTombstones(localRecord)
+    };
     const notesById = new Map(normalizeNotes(remoteRecord).map((note) => [note.id, note]));
     normalizeNotes(localRecord).forEach((note) => {
       const existing = notesById.get(note.id);
@@ -97,10 +113,15 @@ export const mergeProgress = (localRecords, remoteRecords) => {
       ...remoteRecord,
       completed: localUpdated >= remoteUpdated ? Boolean(localRecord.completed) : Boolean(remoteRecord.completed),
       updatedAt: new Date(Math.max(localUpdated, remoteUpdated, Date.now())).toISOString(),
-      notes: [...notesById.values()]
+      notes: [...notesById.values()].filter((note) => {
+        const deletedAt = Date.parse(noteTombstones[note.id] || '') || 0;
+        const noteUpdated = Date.parse(note.updatedAt || '') || 0;
+        return deletedAt < noteUpdated;
+      }),
+      noteTombstones
     };
   });
-  return Object.fromEntries(Object.entries(merged).filter(([, record]) => shouldKeepRecord(record)));
+  return Object.fromEntries(Object.entries(merged).filter(([, record]) => shouldKeepStoredRecord(record)));
 };
 
 export const createSupabaseProgressAdapter = (supabase, currentUser) => ({
