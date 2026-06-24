@@ -330,6 +330,7 @@ export default function SheetApp({ sheet, initialProblems }) {
   const totalCompleted = filteredProblems.filter((problem) => progress[problemIdFor(sheet, problem)]?.completed).length;
   const syncState = syncStateFor(syncStatus, user);
   const syncLabel = user?.email || syncStatus;
+  const isSyncing = syncState === 'syncing';
 
   return (
     <main className="next-shell">
@@ -350,6 +351,11 @@ export default function SheetApp({ sheet, initialProblems }) {
             <span className="next-sync-dot" aria-hidden="true"></span>
             <span>{syncLabel}</span>
           </span>
+          {user ? (
+            <button className="next-sync-button" type="button" onClick={() => syncRemote(user)} disabled={isSyncing}>
+              {syncState === 'error' ? 'Retry sync' : 'Sync now'}
+            </button>
+          ) : null}
           {user ? (
             <button type="button" onClick={signOut}>
               Sign out

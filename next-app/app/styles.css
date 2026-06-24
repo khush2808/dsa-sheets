@@ -272,6 +272,17 @@ select {
   background: var(--danger);
 }
 
+.next-sync-button {
+  min-height: 2rem;
+  padding-inline: 0.65rem;
+  font-size: 0.84rem;
+}
+
+.next-sync-button:disabled {
+  cursor: wait;
+  opacity: 0.62;
+}
+
 .next-toolbar label {
   display: inline-flex;
   align-items: center;
