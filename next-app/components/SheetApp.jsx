@@ -2,11 +2,16 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { useEffect, useMemo, useState } from 'react';
+import {
+  createLocalProgressAdapter,
+  createSupabaseProgressAdapter,
+  mergeProgress,
+  normalizeNotes
+} from '../lib/progress';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
-const progressStorageKey = 'dsaSheetProblemProgress:v1';
 const collapseStorageKey = 'dsaSheetCollapsedSections';
 const themeStorageKey = 'theme';
 const linkTargetStorageKey = 'dsaSheetLinkTarget';
@@ -29,10 +34,6 @@ const subName = (sheet, problem) => (sheet.type === 'striver' ? problem.subcateg
 
 const categoryLabel = (sheet) => (sheet.type === 'striver' ? 'Sections' : 'Patterns');
 
-const normalizeNotes = (record = {}) => (Array.isArray(record.notes) ? record.notes.filter((note) => note && typeof note.text === 'string') : []);
-
-const shouldKeepRecord = (record = {}) => Boolean(record.completed) || normalizeNotes(record).length > 0;
-
 const articleLink = (problem) => problem.article || problem.solution;
 
 const googleSearchLink = (problem) =>
@@ -47,27 +48,6 @@ const linkSet = (problem) => [
 ].filter(([, href]) => href);
 
 const primaryLink = (problem) => articleLink(problem) || problem.leetcode || problem.youtube || problem.link;
-
-const readLocalProgress = () => {
-  try {
-    const records = JSON.parse(localStorage.getItem(progressStorageKey) || '{}');
-    return Object.fromEntries(
-      Object.entries(records).map(([problemId, record]) => [
-        problemId,
-        {
-          ...record,
-          notes: normalizeNotes(record)
-        }
-      ])
-    );
-  } catch {
-    return {};
-  }
-};
-
-const writeLocalProgress = (records) => {
-  localStorage.setItem(progressStorageKey, JSON.stringify(records));
-};
 
 const readCollapsed = () => {
   try {
@@ -89,51 +69,8 @@ const readLocalSetting = (key, fallback) => {
   }
 };
 
-const remoteRowsToProgress = (progressRows = [], noteRows = []) => {
-  const records = {};
-  progressRows.forEach((row) => {
-    records[row.problem_id] = {
-      completed: row.completed,
-      updatedAt: row.updated_at,
-      notes: []
-    };
-  });
-  noteRows.forEach((row) => {
-    records[row.problem_id] ||= { notes: [] };
-    records[row.problem_id].notes.push({
-      id: row.id,
-      text: row.body,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at
-    });
-  });
-  return records;
-};
-
-const mergeProgress = (localRecords, remoteRecords) => {
-  const merged = { ...remoteRecords };
-  Object.entries(localRecords).forEach(([problemId, localRecord]) => {
-    const remoteRecord = merged[problemId] || { notes: [] };
-    const localUpdated = Date.parse(localRecord.updatedAt || '') || 0;
-    const remoteUpdated = Date.parse(remoteRecord.updatedAt || '') || 0;
-    const notesById = new Map(normalizeNotes(remoteRecord).map((note) => [note.id, note]));
-    normalizeNotes(localRecord).forEach((note) => {
-      const existing = notesById.get(note.id);
-      const noteUpdated = Date.parse(note.updatedAt || '') || 0;
-      const existingUpdated = Date.parse(existing?.updatedAt || '') || 0;
-      if (!existing || noteUpdated >= existingUpdated) notesById.set(note.id, note);
-    });
-    merged[problemId] = {
-      ...remoteRecord,
-      completed: localUpdated >= remoteUpdated ? Boolean(localRecord.completed) : Boolean(remoteRecord.completed),
-      updatedAt: new Date(Math.max(localUpdated, remoteUpdated, Date.now())).toISOString(),
-      notes: [...notesById.values()]
-    };
-  });
-  return Object.fromEntries(Object.entries(merged).filter(([, record]) => shouldKeepRecord(record)));
-};
-
 export default function SheetApp({ sheet, initialProblems }) {
+  const localProgressAdapter = useMemo(() => createLocalProgressAdapter(), []);
   const [user, setUser] = useState(null);
   const [syncStatus, setSyncStatus] = useState(supabase ? 'Checking session' : 'Local only');
   const [category, setCategory] = useState('all');
@@ -149,11 +86,11 @@ export default function SheetApp({ sheet, initialProblems }) {
   const [openNotes, setOpenNotes] = useState(new Set());
 
   useEffect(() => {
-    setProgress(readLocalProgress());
+    setProgress(localProgressAdapter.loadAll());
     setCollapsed(readCollapsed());
     setTheme(readLocalSetting(themeStorageKey, 'light'));
     setLinkTarget(readLocalSetting(linkTargetStorageKey, 'same'));
-  }, []);
+  }, [localProgressAdapter]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -238,15 +175,11 @@ export default function SheetApp({ sheet, initialProblems }) {
     if (!supabase || !currentUser) return;
     setSyncStatus('Syncing...');
     try {
-      const [{ data: progressRows, error: progressError }, { data: noteRows, error: noteError }] = await Promise.all([
-        supabase.from('user_problem_progress').select('problem_id, completed, updated_at'),
-        supabase.from('user_problem_notes').select('id, problem_id, body, created_at, updated_at').order('created_at')
-      ]);
-      if (progressError || noteError) throw progressError || noteError;
-      const merged = mergeProgress(readLocalProgress(), remoteRowsToProgress(progressRows, noteRows));
-      writeLocalProgress(merged);
+      const remoteProgressAdapter = createSupabaseProgressAdapter(supabase, currentUser);
+      const merged = mergeProgress(localProgressAdapter.loadAll(), await remoteProgressAdapter.loadAll());
+      localProgressAdapter.replaceAll(merged);
       setProgress(merged);
-      await saveAllRemote(merged, currentUser);
+      await remoteProgressAdapter.saveProblems(merged);
       setSyncStatus('Synced');
     } catch (error) {
       console.error(error);
@@ -254,60 +187,13 @@ export default function SheetApp({ sheet, initialProblems }) {
     }
   };
 
-  const saveRemoteProblem = async (problemId, record, currentUser = user) => {
-    if (!supabase || !currentUser) return;
-    if (!shouldKeepRecord(record)) {
-      const [{ error: notesDeleteError }, { error: progressDeleteError }] = await Promise.all([
-        supabase.from('user_problem_notes').delete().eq('user_id', currentUser.id).eq('problem_id', problemId),
-        supabase.from('user_problem_progress').delete().eq('user_id', currentUser.id).eq('problem_id', problemId)
-      ]);
-      if (notesDeleteError || progressDeleteError) throw notesDeleteError || progressDeleteError;
-      return;
-    }
-    const updatedAt = record.updatedAt || new Date().toISOString();
-    const { error: progressError } = await supabase.from('user_problem_progress').upsert({
-      user_id: currentUser.id,
-      problem_id: problemId,
-      completed: Boolean(record.completed),
-      updated_at: updatedAt
-    });
-    if (progressError) throw progressError;
-    const notes = normalizeNotes(record);
-    let deleteQuery = supabase.from('user_problem_notes').delete().eq('user_id', currentUser.id).eq('problem_id', problemId);
-    if (notes.length) deleteQuery = deleteQuery.not('id', 'in', `(${notes.map((note) => `"${note.id}"`).join(',')})`);
-    const { error: deleteError } = await deleteQuery;
-    if (deleteError) throw deleteError;
-    if (notes.length) {
-      const { error: notesError } = await supabase.from('user_problem_notes').upsert(
-        notes.map((note) => ({
-          id: note.id,
-          user_id: currentUser.id,
-          problem_id: problemId,
-          body: note.text,
-          created_at: note.createdAt || updatedAt,
-          updated_at: note.updatedAt || updatedAt
-        }))
-      );
-      if (notesError) throw notesError;
-    }
-  };
-
-  const saveAllRemote = async (records, currentUser = user) => {
-    if (!supabase || !currentUser) return;
-    for (const [problemId, record] of Object.entries(records)) await saveRemoteProblem(problemId, record, currentUser);
-  };
-
   const updateProblem = async (problemId, value) => {
-    const updatedAt = new Date().toISOString();
-    const next = { ...progress };
-    next[problemId] = { ...next[problemId], notes: normalizeNotes(next[problemId]), ...value, updatedAt };
-    if (!shouldKeepRecord(next[problemId])) delete next[problemId];
+    const next = localProgressAdapter.saveProblem(problemId, value);
     setProgress(next);
-    writeLocalProgress(next);
     if (user) {
       setSyncStatus('Syncing...');
       try {
-        await saveRemoteProblem(problemId, next[problemId] || { notes: [] });
+        await createSupabaseProgressAdapter(supabase, user).saveProblem(problemId, next[problemId] || { notes: [] });
         setSyncStatus('Synced');
       } catch (error) {
         console.error(error);
@@ -317,20 +203,17 @@ export default function SheetApp({ sheet, initialProblems }) {
   };
 
   const toggleSection = async (problems, checked) => {
-    const updatedAt = new Date().toISOString();
-    const next = { ...progress };
-    const affectedProblemIds = problems.map((problem) => problemIdFor(sheet, problem));
-    problems.forEach((problem) => {
-      const problemId = problemIdFor(sheet, problem);
-      next[problemId] = { ...next[problemId], notes: normalizeNotes(next[problemId]), completed: checked, updatedAt };
-      if (!shouldKeepRecord(next[problemId])) delete next[problemId];
-    });
+    const updates = problems.map((problem) => ({
+      problemId: problemIdFor(sheet, problem),
+      value: { completed: checked }
+    }));
+    const next = localProgressAdapter.saveProblems(updates);
     setProgress(next);
-    writeLocalProgress(next);
     if (user) {
       setSyncStatus('Syncing...');
       try {
-        await Promise.all(affectedProblemIds.map((problemId) => saveRemoteProblem(problemId, next[problemId] || { notes: [] })));
+        const remoteProgressAdapter = createSupabaseProgressAdapter(supabase, user);
+        await Promise.all(updates.map(({ problemId }) => remoteProgressAdapter.saveProblem(problemId, next[problemId] || { notes: [] })));
         setSyncStatus('Synced');
       } catch (error) {
         console.error(error);
