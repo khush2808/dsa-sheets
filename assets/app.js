@@ -290,6 +290,22 @@ const persistAllRemoteIfSignedIn = async () => {
   renderAccountPanel();
 };
 
+const persistRemoteUpdatesIfSignedIn = async (updates) => {
+  if (!state.user) return;
+  state.syncStatus = 'syncing';
+  renderAccountPanel();
+  try {
+    await Promise.all(
+      updates.map(({ problemId }) => saveRemoteProblem(problemId, state.progress[problemId] || { notes: [] }))
+    );
+    state.syncStatus = 'synced';
+  } catch (error) {
+    console.error(error);
+    state.syncStatus = 'error';
+  }
+  renderAccountPanel();
+};
+
 const updateProblemProgress = async (problemId, value) => {
   state.progress = await progressRepository.saveProblem(problemId, value);
   await persistRemoteIfSignedIn(problemId, state.progress[problemId] || { notes: [] });
@@ -297,7 +313,7 @@ const updateProblemProgress = async (problemId, value) => {
 
 const updateManyProblemProgress = async (updates) => {
   state.progress = await progressRepository.saveProblems(updates);
-  await persistAllRemoteIfSignedIn();
+  await persistRemoteUpdatesIfSignedIn(updates);
 };
 
 const renderNotesButton = (problemId, progress) => {
