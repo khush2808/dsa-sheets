@@ -84,6 +84,7 @@ export default function SheetApp({ sheet, initialProblems }) {
   const [progress, setProgress] = useState({});
   const [collapsed, setCollapsed] = useState(new Set());
   const [openNotes, setOpenNotes] = useState(new Set());
+  const [celebratingSections, setCelebratingSections] = useState(new Set());
 
   useEffect(() => {
     setProgress(localProgressAdapter.loadAll());
@@ -200,6 +201,7 @@ export default function SheetApp({ sheet, initialProblems }) {
         setSyncStatus('Sync issue');
       }
     }
+    return next;
   };
 
   const toggleSection = async (problems, checked) => {
@@ -220,6 +222,21 @@ export default function SheetApp({ sheet, initialProblems }) {
         setSyncStatus('Sync issue');
       }
     }
+    return next;
+  };
+
+  const sectionIsComplete = (problems, records) =>
+    Boolean(problems.length && problems.every((problem) => records[problemIdFor(sheet, problem)]?.completed));
+
+  const celebrateSection = (key) => {
+    setCelebratingSections((current) => new Set([...current, key]));
+    setTimeout(() => {
+      setCelebratingSections((current) => {
+        const next = new Set(current);
+        next.delete(key);
+        return next;
+      });
+    }, 900);
   };
 
   const toggleCollapse = (key) => {
@@ -406,7 +423,7 @@ export default function SheetApp({ sheet, initialProblems }) {
           const complete = completed === problems.length;
           const partial = completed > 0 && completed < problems.length;
           return (
-            <section key={name} className="next-section">
+            <section key={name} className={`next-section ${complete ? 'complete' : ''} ${celebratingSections.has(key) ? 'celebrating' : ''}`}>
               <header>
                 <button type="button" onClick={() => toggleCollapse(key)} aria-expanded={!collapsed.has(key)}>
                   {collapsed.has(key) ? '>' : 'v'}
@@ -423,7 +440,10 @@ export default function SheetApp({ sheet, initialProblems }) {
                   ref={(input) => {
                     if (input) input.indeterminate = partial;
                   }}
-                  onChange={(event) => toggleSection(problems, event.target.checked)}
+                  onChange={async (event) => {
+                    const next = await toggleSection(problems, event.target.checked);
+                    if (event.target.checked && !complete && sectionIsComplete(problems, next)) celebrateSection(key);
+                  }}
                   aria-label={`Mark ${name} complete`}
                 />
               </header>
@@ -440,7 +460,10 @@ export default function SheetApp({ sheet, initialProblems }) {
                         <input
                           type="checkbox"
                           checked={Boolean(record.completed)}
-                          onChange={(event) => updateProblem(problemId, { completed: event.target.checked })}
+                          onChange={async (event) => {
+                            const next = await updateProblem(problemId, { completed: event.target.checked });
+                            if (event.target.checked && !complete && sectionIsComplete(problems, next)) celebrateSection(key);
+                          }}
                           aria-label={`Mark ${problem.problem_name} complete`}
                         />
                         <div>
