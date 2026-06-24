@@ -188,6 +188,14 @@ const saveRemoteProblem = async (problemId, record) => {
   if (!state.supabase || !state.user) return;
   const notes = normalizeNotes(record);
   const updatedAt = record.updatedAt || new Date().toISOString();
+  if (!shouldKeepProgressRecord({ ...record, notes })) {
+    const [{ error: notesDeleteError }, { error: progressDeleteError }] = await Promise.all([
+      state.supabase.from('user_problem_notes').delete().eq('user_id', state.user.id).eq('problem_id', problemId),
+      state.supabase.from('user_problem_progress').delete().eq('user_id', state.user.id).eq('problem_id', problemId)
+    ]);
+    if (notesDeleteError || progressDeleteError) throw notesDeleteError || progressDeleteError;
+    return;
+  }
   const { error: progressError } = await state.supabase.from('user_problem_progress').upsert({
     user_id: state.user.id,
     problem_id: problemId,

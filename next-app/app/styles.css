@@ -55,14 +55,14 @@ a {
   line-height: 1;
 }
 
-.sheet-grid,
-.next-problems {
+.sheet-grid {
   display: grid;
   gap: 0.75rem;
 }
 
 .sheet-card,
-.next-problems article,
+.next-section,
+.next-section article,
 .next-toolbar {
   border: 1px solid var(--line);
   border-radius: 0.5rem;
@@ -95,6 +95,7 @@ a {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
 button {
@@ -109,11 +110,112 @@ button {
   cursor: pointer;
 }
 
-.next-problems article {
+.next-filters {
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  background: var(--surface);
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.next-filters input[type="text"],
+.next-filters input:not([type]) {
+  min-width: min(100%, 22rem);
+}
+
+.next-filters > input {
+  min-width: min(100%, 24rem);
+  min-height: 2.4rem;
+  border: 1px solid var(--line);
+  border-radius: 0.45rem;
+  padding: 0 0.75rem;
+  font: inherit;
+}
+
+.next-filters label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--muted);
+  font-weight: 750;
+}
+
+.next-problems {
+  display: grid;
+  gap: 1rem;
+}
+
+.next-section {
+  overflow: hidden;
+}
+
+.next-section header {
+  min-height: 4rem;
+  background: #16201d;
+  color: white;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.8rem 1rem;
+}
+
+.next-section h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.next-section header span {
+  color: #b8ded8;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.next-section article {
+  border-width: 1px 0 0;
+  border-radius: 0;
   min-height: 4rem;
   padding: 0.75rem 1rem;
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 0.75rem;
-  align-items: center;
+  align-items: start;
+}
+
+.next-section article > button {
+  white-space: nowrap;
+}
+
+.next-section article b {
+  display: block;
+}
+
+.next-notes {
+  margin-top: 0.7rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.next-notes label {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem;
+}
+
+.next-notes textarea {
+  width: 100%;
+  min-height: 3rem;
+  border: 1px solid var(--line);
+  border-radius: 0.45rem;
+  padding: 0.55rem;
+  font: inherit;
+  resize: vertical;
+}
+
+input[type="checkbox"] {
+  accent-color: var(--accent);
 }

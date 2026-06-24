@@ -5,10 +5,10 @@
   "main": "index.js",
   "scripts": {
     "dev": "vite --host 0.0.0.0 --open /",
-    "dev:next": "next dev next-app",
+    "dev:next": "cd next-app && next dev",
     "preview": "vite preview --host 0.0.0.0 --open /",
     "build": "npm run config:supabase && node scripts/stage-static-site.mjs",
-    "build:next": "next build next-app",
+    "build:next": "cd next-app && next build",
     "config:supabase": "node scripts/create-supabase-config.mjs",
     "extract:tuf": "node scripts/extract-tuf-sheets.mjs",
     "excel": "node scripts/create-excel.mjs",
