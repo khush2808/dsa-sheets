@@ -1,7 +1,7 @@
 'use client';
 
-import { createClient } from '@supabase/supabase-js';
 import { useEffect, useMemo, useState } from 'react';
+import { ProviderButton, UserIcon, authRedirectUrl, supabase } from './AuthControls';
 import {
   createLocalProgressAdapter,
   createSupabaseProgressAdapter,
@@ -10,9 +10,6 @@ import {
 } from '../lib/progress';
 import { sheets } from '../lib/sheets';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 const collapseStorageKey = 'dsaSheetCollapsedSections';
 const themeStorageKey = 'theme';
 const linkTargetStorageKey = 'dsaSheetLinkTarget';
@@ -90,13 +87,13 @@ const readLocalSetting = (key, fallback) => {
 };
 
 const syncStateFor = (status, user) => {
-  if (status === 'Syncing...' || status === 'Checking session' || status === 'Sending magic link' || status === 'Signing out') return 'syncing';
+  if (status === 'Syncing...' || status === 'Checking session' || status === 'Sending code' || status === 'Verifying code' || status === 'Signing out') {
+    return 'syncing';
+  }
   if (status === 'Sync issue' || status === 'Auth error') return 'error';
   if (user || status === 'Synced') return 'synced';
   return 'local';
 };
-
-const authRedirectUrl = () => `${window.location.origin}${window.location.pathname}`;
 
 export default function SheetApp({ sheet, initialProblems }) {
   const localProgressAdapter = useMemo(() => createLocalProgressAdapter(), []);
@@ -109,6 +106,8 @@ export default function SheetApp({ sheet, initialProblems }) {
   const [theme, setTheme] = useState('light');
   const [linkTarget, setLinkTarget] = useState('same');
   const [email, setEmail] = useState('');
+  const [otp, setOtp] = useState('');
+  const [authStep, setAuthStep] = useState('email');
   const [authMessage, setAuthMessage] = useState('');
   const [progress, setProgress] = useState({});
   const [collapsed, setCollapsed] = useState(new Set());
@@ -155,6 +154,7 @@ export default function SheetApp({ sheet, initialProblems }) {
       setUser(session?.user || null);
       setSyncStatus(session?.user ? 'Syncing...' : 'Signed out');
       setAuthMessage('');
+      if (session?.user) setAuthStep('email');
       if (session?.user) await syncRemote(session.user);
     });
     return () => listener.subscription.unsubscribe();
@@ -314,11 +314,34 @@ export default function SheetApp({ sheet, initialProblems }) {
     event.preventDefault();
     const trimmedEmail = email.trim();
     if (!trimmedEmail || !supabase) return;
-    setSyncStatus('Sending magic link');
+    setSyncStatus('Sending code');
     setAuthMessage('');
     const { error } = await supabase.auth.signInWithOtp({ email: trimmedEmail, options: { emailRedirectTo: authRedirectUrl() } });
-    setSyncStatus(error ? 'Auth error' : 'Check your email');
-    setAuthMessage(error ? 'Could not send magic link.' : 'Check your email for the magic link.');
+    setSyncStatus(error ? 'Auth error' : 'Code sent');
+    if (error) {
+      setAuthMessage('Could not send the email code.');
+      return;
+    }
+    setAuthStep('code');
+    setAuthMessage('Enter the 6-digit code from your email.');
+  };
+
+  const verifyEmailCode = async (event) => {
+    event.preventDefault();
+    const trimmedEmail = email.trim();
+    const token = otp.replace(/\D/g, '');
+    if (!trimmedEmail || token.length < 6 || !supabase) return;
+    setSyncStatus('Verifying code');
+    setAuthMessage('');
+    const { error } = await supabase.auth.verifyOtp({ email: trimmedEmail, token, type: 'email' });
+    if (error) {
+      setSyncStatus('Auth error');
+      setAuthMessage('That code did not work. Check the email and try again.');
+      return;
+    }
+    setOtp('');
+    setAuthStep('email');
+    setSyncStatus('Syncing...');
   };
 
   const signInWithProvider = async (provider) => {
@@ -428,29 +451,52 @@ export default function SheetApp({ sheet, initialProblems }) {
                 </button>
               </>
             ) : (
-              <form className="account-auth-form" onSubmit={signInWithEmail}>
-                <label htmlFor="authEmail">Email</label>
-                <input
-                  id="authEmail"
-                  type="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  placeholder="you@example.com"
-                  autoComplete="email"
-                  disabled={!supabase}
-                />
-                <button type="submit" disabled={!supabase || !email.trim()}>
-                  Send magic link
-                </button>
-                <div className="auth-buttons">
-                  <button type="button" onClick={() => signInWithProvider('google')} disabled={!supabase}>
-                    Google
-                  </button>
-                  <button type="button" onClick={() => signInWithProvider('github')} disabled={!supabase}>
-                    GitHub
-                  </button>
+              <>
+                <div className="account-auth-intro">
+                  <span className="auth-avatar">
+                    <UserIcon />
+                  </span>
+                  <div>
+                    <b>Save across devices</b>
+                    <p>Sign in with a code or provider.</p>
+                  </div>
                 </div>
-              </form>
+                <form className="account-auth-form" onSubmit={authStep === 'code' ? verifyEmailCode : signInWithEmail}>
+                  <label htmlFor="authEmail">Email</label>
+                  <input
+                    id="authEmail"
+                    type="email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    placeholder="you@example.com"
+                    autoComplete="email"
+                    disabled={!supabase}
+                  />
+                  {authStep === 'code' ? (
+                    <>
+                      <label htmlFor="authCode">Code</label>
+                      <input
+                        id="authCode"
+                        className="otp-input"
+                        value={otp}
+                        onChange={(event) => setOtp(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                        placeholder="123456"
+                        autoComplete="one-time-code"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        disabled={!supabase}
+                      />
+                    </>
+                  ) : null}
+                  <button type="submit" disabled={!supabase || !email.trim() || (authStep === 'code' && otp.length < 6)}>
+                    {authStep === 'code' ? 'Verify code' : 'Send code'}
+                  </button>
+                  <div className="auth-buttons">
+                    <ProviderButton provider="google" onClick={() => signInWithProvider('google')} disabled={!supabase} />
+                    <ProviderButton provider="github" onClick={() => signInWithProvider('github')} disabled={!supabase} />
+                  </div>
+                </form>
+              </>
             )}
             {authMessage ? <p>{authMessage}</p> : null}
           </div>

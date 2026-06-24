@@ -1,3 +1,5 @@
+import { LandingAuth } from '../components/AuthControls';
+
 const sheetCards = [
   {
     title: 'Striver A2Z',
@@ -73,6 +75,7 @@ export default function HomePage() {
           <span>DSA Sheets</span>
         </div>
         <div className="landing-nav-actions">
+          <LandingAuth />
           <a className="landing-button" href="https://github.com/khush2808/dsa-sheets">
             GitHub
           </a>
@@ -110,7 +113,7 @@ export default function HomePage() {
               <div className="landing-stat"><b>10</b><span>Excel tabs in the global workbook</span></div>
               <div className="landing-stat"><b>7</b><span>Focused web routes</span></div>
               <div className="landing-stat"><b>2k+</b><span>Problem rows across sources</span></div>
-              <div className="landing-stat"><b>0</b><span>Accounts needed</span></div>
+              <div className="landing-stat"><b>Optional</b><span>Account sync for saved progress</span></div>
             </div>
           </aside>
         </section>
