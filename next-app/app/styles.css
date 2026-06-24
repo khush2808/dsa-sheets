@@ -346,19 +346,93 @@ select {
   font-weight: 800;
 }
 
+.next-note-toggle {
+  width: 3rem;
+  min-height: 2rem;
+  padding: 0;
+  display: inline-grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  justify-items: center;
+  gap: 0.15rem;
+}
+
+.next-note-toggle.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.next-note-icon {
+  width: 1rem;
+  height: 0.78rem;
+  border: 2px solid currentColor;
+  border-radius: 0.22rem;
+  position: relative;
+}
+
+.next-note-icon::before,
+.next-note-icon::after {
+  content: "";
+  position: absolute;
+  left: 0.18rem;
+  right: 0.18rem;
+  height: 2px;
+  background: currentColor;
+}
+
+.next-note-icon::before {
+  top: 0.18rem;
+}
+
+.next-note-icon::after {
+  top: 0.42rem;
+}
+
+.next-note-count {
+  min-width: 1rem;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 900;
+}
+
 .next-notes {
   margin-top: 0.7rem;
   display: grid;
-  gap: 0.55rem;
+  gap: 0.6rem;
+  max-width: 40rem;
 }
 
-.next-notes label {
+.next-notes-banner {
+  width: max-content;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-strong);
+  color: var(--muted);
+  padding: 0.2rem 0.55rem;
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
+.next-notes-list {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
   gap: 0.5rem;
 }
 
-.next-notes textarea {
+.next-notes-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 750;
+}
+
+.next-note-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 2rem;
+  gap: 0.45rem;
+  align-items: start;
+}
+
+.next-note-editor textarea {
   width: 100%;
   min-height: 3rem;
   border: 1px solid var(--line);
@@ -368,6 +442,69 @@ select {
   padding: 0.55rem;
   font: inherit;
   resize: vertical;
+}
+
+.next-note-editor textarea:focus {
+  outline: 2px solid var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.next-delete-note-button {
+  width: 2rem;
+  min-height: 2rem;
+  padding: 0;
+  color: var(--danger);
+  display: inline-grid;
+  place-items: center;
+}
+
+.next-delete-note-button span {
+  width: 0.95rem;
+  height: 1rem;
+  border: 2px solid currentColor;
+  border-top: 0;
+  border-radius: 0 0 0.18rem 0.18rem;
+  position: relative;
+}
+
+.next-delete-note-button span::before,
+.next-delete-note-button span::after {
+  content: "";
+  position: absolute;
+  background: currentColor;
+}
+
+.next-delete-note-button span::before {
+  width: 1.15rem;
+  height: 2px;
+  top: -0.25rem;
+  left: -0.2rem;
+}
+
+.next-delete-note-button span::after {
+  width: 2px;
+  height: 0.35rem;
+  top: -0.55rem;
+  left: 0.35rem;
+}
+
+.next-add-note-button {
+  width: max-content;
+  min-height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.next-add-note-button span:first-child {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--surface);
+  display: inline-grid;
+  place-items: center;
+  line-height: 1;
 }
 
 .next-notes button[aria-label="Delete note"] {

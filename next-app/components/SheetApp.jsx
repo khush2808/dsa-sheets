@@ -573,16 +573,35 @@ export default function SheetApp({ sheet, initialProblems }) {
                           </span>
                           {notesOpen ? (
                             <div className="next-notes">
-                              {notes.map((note) => (
-                                <label key={note.id}>
-                                  <textarea value={note.text} onChange={(event) => editNote(problemId, note.id, event.target.value)} />
-                                  <button type="button" onClick={() => deleteNote(problemId, note.id)} aria-label="Delete note">
-                                    Delete
-                                  </button>
-                                </label>
-                              ))}
-                              <button type="button" onClick={() => addNote(problemId)}>
-                                New note
+                              <div className="next-notes-banner">{notes.length} notes</div>
+                              <div className="next-notes-list">
+                                {notes.length ? (
+                                  notes.map((note) => (
+                                    <div className="next-note-editor" key={note.id}>
+                                      <textarea
+                                        value={note.text}
+                                        onChange={(event) => editNote(problemId, note.id, event.target.value)}
+                                        aria-label={`Note for ${problem.problem_name}`}
+                                        rows={2}
+                                      />
+                                      <button
+                                        className="next-delete-note-button"
+                                        type="button"
+                                        onClick={() => deleteNote(problemId, note.id)}
+                                        aria-label="Delete note"
+                                        title="Delete note"
+                                      >
+                                        <span aria-hidden="true"></span>
+                                      </button>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <p className="next-notes-empty">No notes yet.</p>
+                                )}
+                              </div>
+                              <button className="next-add-note-button" type="button" onClick={() => addNote(problemId)} title="New note">
+                                <span aria-hidden="true">+</span>
+                                <span>New note</span>
                               </button>
                             </div>
                           ) : null}
@@ -595,8 +614,16 @@ export default function SheetApp({ sheet, initialProblems }) {
                               </a>
                             ))}
                           </div>
-                          <button type="button" onClick={() => setOpenNotes((current) => new Set(current.has(problemId) ? [...current].filter((id) => id !== problemId) : [...current, problemId]))}>
-                            Notes {notes.length}
+                          <button
+                            className={`next-note-toggle ${notesOpen ? 'active' : ''}`}
+                            type="button"
+                            onClick={() => setOpenNotes((current) => new Set(current.has(problemId) ? [...current].filter((id) => id !== problemId) : [...current, problemId]))}
+                            aria-label={`Notes for ${problem.problem_name}`}
+                            aria-expanded={notesOpen}
+                            title="Notes"
+                          >
+                            <span className="next-note-icon" aria-hidden="true"></span>
+                            <span className="next-note-count">{notes.length}</span>
                           </button>
                         </div>
                       </article>
