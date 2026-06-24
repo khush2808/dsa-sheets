@@ -91,6 +91,7 @@ export default function SheetApp({ sheet, initialProblems }) {
   const [progress, setProgress] = useState({});
   const [collapsed, setCollapsed] = useState(new Set());
   const [openNotes, setOpenNotes] = useState(new Set());
+  const [pendingNoteFocus, setPendingNoteFocus] = useState('');
   const [celebratingSections, setCelebratingSections] = useState(new Set());
 
   useEffect(() => {
@@ -108,6 +109,15 @@ export default function SheetApp({ sheet, initialProblems }) {
   useEffect(() => {
     localStorage.setItem(linkTargetStorageKey, linkTarget);
   }, [linkTarget]);
+
+  useEffect(() => {
+    if (!pendingNoteFocus) return;
+    const selector = `[data-next-note-id="${CSS.escape(pendingNoteFocus)}"]`;
+    const textarea = document.querySelector(selector);
+    if (!textarea) return;
+    textarea.focus();
+    setPendingNoteFocus('');
+  }, [pendingNoteFocus, progress, openNotes]);
 
   useEffect(() => {
     if (!supabase) return;
@@ -259,6 +269,7 @@ export default function SheetApp({ sheet, initialProblems }) {
     const note = { id: `note-${Date.now()}`, text: '', createdAt: now, updatedAt: now };
     updateProblem(problemId, { notes: [...normalizeNotes(progress[problemId]), note] });
     setOpenNotes(new Set([...openNotes, problemId]));
+    setPendingNoteFocus(note.id);
   };
 
   const editNote = (problemId, noteId, text) => {
@@ -500,6 +511,7 @@ export default function SheetApp({ sheet, initialProblems }) {
                                         value={note.text}
                                         onChange={(event) => editNote(problemId, note.id, event.target.value)}
                                         aria-label={`Note for ${problem.problem_name}`}
+                                        data-next-note-id={note.id}
                                         rows={2}
                                       />
                                       <button
