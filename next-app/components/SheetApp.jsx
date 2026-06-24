@@ -139,6 +139,8 @@ export default function SheetApp({ sheet, initialProblems }) {
   const [includePro, setIncludePro] = useState(true);
   const [theme, setTheme] = useState('light');
   const [linkTarget, setLinkTarget] = useState('same');
+  const [email, setEmail] = useState('');
+  const [authMessage, setAuthMessage] = useState('');
   const [progress, setProgress] = useState({});
   const [collapsed, setCollapsed] = useState(new Set());
   const [openNotes, setOpenNotes] = useState(new Set());
@@ -165,12 +167,14 @@ export default function SheetApp({ sheet, initialProblems }) {
       const { data } = await supabase.auth.getSession();
       setUser(data.session?.user || null);
       setSyncStatus(data.session?.user ? 'Syncing...' : 'Signed out');
+      setAuthMessage('');
       if (data.session?.user) await syncRemote(data.session.user);
     };
     loadSession();
     const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setUser(session?.user || null);
       setSyncStatus(session?.user ? 'Syncing...' : 'Signed out');
+      setAuthMessage('');
       if (session?.user) await syncRemote(session.user);
     });
     return () => listener.subscription.unsubscribe();
@@ -224,25 +228,28 @@ export default function SheetApp({ sheet, initialProblems }) {
   const saveRemoteProblem = async (problemId, record, currentUser = user) => {
     if (!supabase || !currentUser) return;
     if (!shouldKeepRecord(record)) {
-      await Promise.all([
+      const [{ error: notesDeleteError }, { error: progressDeleteError }] = await Promise.all([
         supabase.from('user_problem_notes').delete().eq('user_id', currentUser.id).eq('problem_id', problemId),
         supabase.from('user_problem_progress').delete().eq('user_id', currentUser.id).eq('problem_id', problemId)
       ]);
+      if (notesDeleteError || progressDeleteError) throw notesDeleteError || progressDeleteError;
       return;
     }
     const updatedAt = record.updatedAt || new Date().toISOString();
-    await supabase.from('user_problem_progress').upsert({
+    const { error: progressError } = await supabase.from('user_problem_progress').upsert({
       user_id: currentUser.id,
       problem_id: problemId,
       completed: Boolean(record.completed),
       updated_at: updatedAt
     });
+    if (progressError) throw progressError;
     const notes = normalizeNotes(record);
     let deleteQuery = supabase.from('user_problem_notes').delete().eq('user_id', currentUser.id).eq('problem_id', problemId);
     if (notes.length) deleteQuery = deleteQuery.not('id', 'in', `(${notes.map((note) => `"${note.id}"`).join(',')})`);
-    await deleteQuery;
+    const { error: deleteError } = await deleteQuery;
+    if (deleteError) throw deleteError;
     if (notes.length) {
-      await supabase.from('user_problem_notes').upsert(
+      const { error: notesError } = await supabase.from('user_problem_notes').upsert(
         notes.map((note) => ({
           id: note.id,
           user_id: currentUser.id,
@@ -252,6 +259,7 @@ export default function SheetApp({ sheet, initialProblems }) {
           updated_at: note.updatedAt || updatedAt
         }))
       );
+      if (notesError) throw notesError;
     }
   };
 
@@ -269,8 +277,13 @@ export default function SheetApp({ sheet, initialProblems }) {
     writeLocalProgress(next);
     if (user) {
       setSyncStatus('Syncing...');
-      await saveRemoteProblem(problemId, next[problemId] || { notes: [] });
-      setSyncStatus('Synced');
+      try {
+        await saveRemoteProblem(problemId, next[problemId] || { notes: [] });
+        setSyncStatus('Synced');
+      } catch (error) {
+        console.error(error);
+        setSyncStatus('Sync issue');
+      }
     }
   };
 
@@ -287,8 +300,13 @@ export default function SheetApp({ sheet, initialProblems }) {
     writeLocalProgress(next);
     if (user) {
       setSyncStatus('Syncing...');
-      await Promise.all(affectedProblemIds.map((problemId) => saveRemoteProblem(problemId, next[problemId] || { notes: [] })));
-      setSyncStatus('Synced');
+      try {
+        await Promise.all(affectedProblemIds.map((problemId) => saveRemoteProblem(problemId, next[problemId] || { notes: [] })));
+        setSyncStatus('Synced');
+      } catch (error) {
+        console.error(error);
+        setSyncStatus('Sync issue');
+      }
     }
   };
 
@@ -317,16 +335,40 @@ export default function SheetApp({ sheet, initialProblems }) {
     updateProblem(problemId, { notes: normalizeNotes(progress[problemId]).filter((note) => note.id !== noteId) });
   };
 
-  const signInWithEmail = async () => {
-    const email = window.prompt('Email for magic link');
-    if (!email || !supabase) return;
+  const signInWithEmail = async (event) => {
+    event.preventDefault();
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !supabase) return;
     setSyncStatus('Sending magic link');
-    const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.href } });
+    setAuthMessage('');
+    const { error } = await supabase.auth.signInWithOtp({ email: trimmedEmail, options: { emailRedirectTo: window.location.href } });
     setSyncStatus(error ? 'Auth error' : 'Check your email');
+    setAuthMessage(error ? 'Could not send magic link.' : 'Check your email for the magic link.');
   };
 
   const signInWithProvider = async (provider) => {
-    await supabase?.auth.signInWithOAuth({ provider, options: { redirectTo: window.location.href } });
+    if (!supabase) return;
+    setSyncStatus(`Opening ${provider}`);
+    setAuthMessage('');
+    const { error } = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo: window.location.href } });
+    if (error) {
+      setSyncStatus('Auth error');
+      setAuthMessage(`Could not start ${provider} sign in.`);
+    }
+  };
+
+  const signOut = async () => {
+    if (!supabase) return;
+    setSyncStatus('Signing out');
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      setSyncStatus('Auth error');
+      setAuthMessage('Could not sign out.');
+      return;
+    }
+    setUser(null);
+    setSyncStatus('Signed out');
+    setAuthMessage('');
   };
 
   const linkProps = linkTarget === 'new' ? { target: '_blank', rel: 'noopener noreferrer' } : {};
@@ -349,14 +391,24 @@ export default function SheetApp({ sheet, initialProblems }) {
           </button>
           <span>{user?.email || syncStatus}</span>
           {user ? (
-            <button type="button" onClick={() => supabase.auth.signOut()}>
+            <button type="button" onClick={signOut}>
               Sign out
             </button>
           ) : (
             <>
-              <button type="button" onClick={signInWithEmail} disabled={!supabase}>
-                Email
-              </button>
+              <form className="next-auth-form" onSubmit={signInWithEmail}>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="you@example.com"
+                  autoComplete="email"
+                  disabled={!supabase}
+                />
+                <button type="submit" disabled={!supabase || !email.trim()}>
+                  Email
+                </button>
+              </form>
               <button type="button" onClick={() => signInWithProvider('google')} disabled={!supabase}>
                 Google
               </button>
@@ -365,6 +417,7 @@ export default function SheetApp({ sheet, initialProblems }) {
               </button>
             </>
           )}
+          {authMessage ? <span className="next-auth-message">{authMessage}</span> : null}
         </div>
       </header>
       <section className="next-hero compact">
