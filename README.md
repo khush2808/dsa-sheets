@@ -74,6 +74,15 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
 
 The static build writes these public values into `assets/supabase-config.js`. The Next scripts write the same public values into ignored `next-app/.env.local` before dev/build. For GitHub Pages, add repository secrets named `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`; for Vercel/Next, add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
 
+## Deployment
+
+This branch supports two hosted surfaces:
+
+- **Vercel** builds the Next.js app with `npm run build:next` and serves `next-app/out`.
+- **GitHub Pages** runs `.github/workflows/pages.yml`, builds the static app with `npm run build`, and serves `dist-static`.
+
+Keep both public Supabase values configured in each host so auth and progress sync work from either URL.
+
 ## Project Notes
 
 See [docs/README.md](./docs/README.md) for architecture notes and the planned path from localStorage progress to authenticated backend-backed user data.

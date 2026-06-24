@@ -90,13 +90,18 @@ That boundary should be preserved. A future backend integration should add an AP
 
 ## Deployment
 
-The project is deployed from Git through Vercel. The current preference is to keep deployment automatic:
+The project is deployed from Git to two surfaces:
+
+- Vercel builds the Next.js app and serves `next-app/out`.
+- GitHub Pages builds the static app and serves `dist-static`.
+
+The current preference is to keep deployment automatic:
 
 1. implement locally
 2. run validation/smoke tests
 3. commit
 4. push to GitHub
-5. let Vercel deploy
+5. let Vercel and GitHub Actions deploy
 
 Static assets in sheet routes use query-string cache busting like:
 
@@ -115,4 +120,3 @@ npm run validate
 ```
 
 For UI behavior changes, also run a browser smoke test against a representative route such as `/neetcode-150/`.
-

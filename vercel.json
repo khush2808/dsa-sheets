@@ -1,5 +1,6 @@
 {
   "cleanUrls": true,
   "trailingSlash": true,
-  "outputDirectory": "dist-static"
+  "buildCommand": "npm run build:next",
+  "outputDirectory": "next-app/out"
 }
