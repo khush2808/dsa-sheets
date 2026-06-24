@@ -76,6 +76,8 @@ const syncStateFor = (status, user) => {
   return 'local';
 };
 
+const authRedirectUrl = () => `${window.location.origin}${window.location.pathname}`;
+
 export default function SheetApp({ sheet, initialProblems }) {
   const localProgressAdapter = useMemo(() => createLocalProgressAdapter(), []);
   const [user, setUser] = useState(null);
@@ -288,7 +290,7 @@ export default function SheetApp({ sheet, initialProblems }) {
     if (!trimmedEmail || !supabase) return;
     setSyncStatus('Sending magic link');
     setAuthMessage('');
-    const { error } = await supabase.auth.signInWithOtp({ email: trimmedEmail, options: { emailRedirectTo: window.location.href } });
+    const { error } = await supabase.auth.signInWithOtp({ email: trimmedEmail, options: { emailRedirectTo: authRedirectUrl() } });
     setSyncStatus(error ? 'Auth error' : 'Check your email');
     setAuthMessage(error ? 'Could not send magic link.' : 'Check your email for the magic link.');
   };
@@ -297,7 +299,7 @@ export default function SheetApp({ sheet, initialProblems }) {
     if (!supabase) return;
     setSyncStatus(`Opening ${provider}`);
     setAuthMessage('');
-    const { error } = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo: window.location.href } });
+    const { error } = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo: authRedirectUrl() } });
     if (error) {
       setSyncStatus('Auth error');
       setAuthMessage(`Could not start ${provider} sign in.`);
