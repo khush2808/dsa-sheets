@@ -14,10 +14,10 @@ This folder is the durable working memory for DSA Sheets. It should help future 
 
 The project intentionally has two frontends for now:
 
-- The **root static app** is the GitHub Pages production path.
+- The **legacy static app** in `old/static/` is the GitHub Pages production source.
 - The **Next.js app** in `next-app/` is the Vercel path and the likely long-term frontend.
 
-Keep both working until the owner explicitly decides to retire one. Avoid moving root static files unless `scripts/stage-static-site.mjs`, route URLs, docs, and deployment smoke tests are updated in the same change.
+Keep both working until the owner explicitly decides to retire one. Do not move `old/static/` paths again unless `scripts/stage-static-site.mjs`, route URLs, docs, and deployment smoke tests are updated in the same change.
 
 ## Safe Defaults
 

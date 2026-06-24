@@ -7,25 +7,25 @@ DSA Sheets has two frontend implementations that share the same problem data and
 ```txt
 data/*.json + sheets/*.xlsx
         |
-        +-- root static app -> GitHub Pages -> dist-static/
+        +-- old/static/ -> GitHub Pages -> dist-static/
         |
         +-- next-app/ -> Vercel -> next-app/out/
         |
         +-- Supabase Auth + Postgres/RLS for signed-in progress and notes
 ```
 
-The root static app is older, but it is still the GitHub Pages production path. The Next.js app is newer and is the Vercel path. Keep both deployable until the owner explicitly chooses a single frontend.
+The legacy static app lives in `old/static/`; it is older, but it is still the GitHub Pages production source. The Next.js app is newer and is the Vercel path. Keep both deployable until the owner explicitly chooses a single frontend.
 
-## Root Static App
+## Legacy Static App
 
 Runtime files:
 
-- `index.html` - landing page.
-- Route folders such as `neetcode-150/` and `strivers-a2z-sheet/`.
-- `assets/app.js` - route UI, auth, local-first progress, Supabase sync, notes, filters.
-- `assets/app.css` - route styling.
-- `assets/landing.css` - landing page styling.
-- `assets/supabase-config.js` - generated public Supabase browser config.
+- `old/static/index.html` - landing page.
+- `old/static/` route folders such as `neetcode-150/` and `strivers-a2z-sheet/`.
+- `old/static/assets/app.js` - route UI, auth, local-first progress, Supabase sync, notes, filters.
+- `old/static/assets/app.css` - route styling.
+- `old/static/assets/landing.css` - landing page styling.
+- `old/static/assets/supabase-config.js` - generated public Supabase browser config.
 
 Each route folder defines `window.SHEET_CONFIG`, then loads shared assets:
 
@@ -34,9 +34,9 @@ Each route folder defines `window.SHEET_CONFIG`, then loads shared assets:
 <script src="../assets/app.js?v=14"></script>
 ```
 
-When changing `assets/app.js` or `assets/app.css`, bump route asset query strings if browser cache invalidation matters.
+When changing `old/static/assets/app.js` or `old/static/assets/app.css`, bump route asset query strings if browser cache invalidation matters.
 
-GitHub Pages deployment does not serve the repo root directly. `npm run build` stages the static app into `dist-static/` using `scripts/stage-static-site.mjs`, and the Pages workflow uploads that directory.
+GitHub Pages deployment does not serve the repo root directly. `npm run build` stages `old/static/` into `dist-static/` using `scripts/stage-static-site.mjs`, and the Pages workflow uploads that directory. The staged output still has root-style public routes such as `/neetcode-150/`.
 
 ## Next.js App
 
@@ -108,6 +108,6 @@ Safe cleanup:
 
 Risky moves:
 
-- Moving root route folders or `assets/` will break GitHub Pages unless `scripts/stage-static-site.mjs`, route HTML, docs, and smoke tests are updated together.
+- Moving `old/static/` route folders or assets will break GitHub Pages unless `scripts/stage-static-site.mjs`, route HTML, docs, and smoke tests are updated together.
 - Moving `data/` affects the static app, Next app, and Excel generation.
 - Moving `sheets/` affects GitHub Pages downloads and docs.

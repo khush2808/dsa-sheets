@@ -6,7 +6,7 @@ This repo deploys to two frontend surfaces.
 
 | Surface | Source | Build | Output | Purpose |
 | --- | --- | --- | --- | --- |
-| GitHub Pages | root static app | `npm run build` | `dist-static/` | Static public site |
+| GitHub Pages | `old/static/` legacy app | `npm run build` | `dist-static/` | Static public site |
 | Vercel | `next-app/` | `npm run build:next` | `next-app/out/` | Next.js static export |
 
 Both surfaces use the same Supabase project and the same public auth/progress tables.
@@ -46,8 +46,8 @@ Build flow:
 
 1. `npm ci`
 2. `npm run build`
-3. `scripts/create-supabase-config.mjs` writes `assets/supabase-config.js`.
-4. `scripts/stage-static-site.mjs` copies root static files into `dist-static/`.
+3. `scripts/create-supabase-config.mjs` writes `old/static/assets/supabase-config.js`.
+4. `scripts/stage-static-site.mjs` copies `old/static/` plus shared `data/` and `sheets/` into `dist-static/`.
 5. GitHub uploads `dist-static/` as the Pages artifact.
 
 `dist-static/` is generated and ignored. Do not commit it.

@@ -21,7 +21,7 @@ The Excel files are generated but intentionally checked in as downloadable deliv
 
 ## Static App Consumption
 
-Each root route folder has an `index.html` with `window.SHEET_CONFIG`:
+Each `old/static/` route folder has an `index.html` with `window.SHEET_CONFIG`:
 
 ```js
 window.SHEET_CONFIG = {
@@ -31,7 +31,7 @@ window.SHEET_CONFIG = {
 };
 ```
 
-`assets/app.js` fetches `dataUrl` and renders the route.
+`old/static/assets/app.js` fetches `dataUrl` and renders the route.
 
 ## Next App Consumption
 
@@ -92,21 +92,21 @@ Scripts:
 - `scripts/create-supabase-config.mjs`
 - `scripts/stage-static-site.mjs`
 
-The static build writes public Supabase config to `assets/supabase-config.js`, then copies these paths into `dist-static/`:
+The static build writes public Supabase config to `old/static/assets/supabase-config.js`, then stages these paths into `dist-static/`:
 
-- `assets/`
+- `assets/` from `old/static/assets/`
 - `data/`
 - `sheets/`
-- route folders
-- `index.html`
+- route folders from `old/static/`
+- `index.html` from `old/static/index.html`
 
 `dist-static/` is ignored and should not be committed.
 
 ## Path Change Checklist
 
-If moving `data/`, `sheets/`, route folders, or `assets/`, update all of:
+If moving `data/`, `sheets/`, `old/static/` route folders, or `old/static/assets/`, update all of:
 
-- root route `index.html` files
+- `old/static/` route `index.html` files
 - `scripts/stage-static-site.mjs`
 - `scripts/create-excel.mjs`
 - `next-app/lib/sheets.js`

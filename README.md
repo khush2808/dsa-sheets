@@ -2,7 +2,7 @@
 
 DSA Sheets is a curated problem browser with two deployable frontends backed by the same static data and Supabase user-progress database.
 
-- **GitHub Pages/static app**: root HTML routes plus `assets/app.js`.
+- **GitHub Pages/static app**: legacy source in `old/static/`, staged back to root-style routes in `dist-static/`.
 - **Vercel/Next app**: `next-app/`, statically exported to `next-app/out`.
 - **Supabase**: Auth, Postgres, and RLS for signed-in progress and notes.
 - **Local-first UX**: anonymous usage stores progress in `localStorage`; signed-in usage merges local records with Supabase.
@@ -21,8 +21,8 @@ DSA Sheets is a curated problem browser with two deployable frontends backed by 
 
 ## Repository Layout
 
-- `assets/` - legacy/static app JavaScript and CSS used by GitHub Pages.
-- Root route folders such as `neetcode-150/` - static app HTML entrypoints.
+- `old/static/` - legacy/static app source used by GitHub Pages.
+- `old/static/assets/` - legacy JavaScript and CSS (`app.js`, `app.css`, `landing.css`).
 - `next-app/` - Next.js implementation used by Vercel.
 - `data/` - checked-in JSON extracts used by both apps and Excel generation.
 - `sheets/` - checked-in Excel exports generated from `data/`.
@@ -53,10 +53,10 @@ The publishable key is safe for browser code. Do not commit service-role keys, p
 
 ## Common Commands
 
-- `npm run dev` - start the root static app with Vite.
+- `npm run dev` - build and preview the staged GitHub Pages/static app.
 - `npm run dev:next` - generate `next-app/.env.local` and start Next.js.
-- `npm run preview` - Vite preview helper.
-- `npm run build` - generate `assets/supabase-config.js` and stage GitHub Pages output in `dist-static/`.
+- `npm run preview` - preview `dist-static/` with Vite.
+- `npm run build` - generate `old/static/assets/supabase-config.js` and stage GitHub Pages output in `dist-static/`.
 - `npm run build:next` - generate `next-app/.env.local` and static-export the Next app to `next-app/out`.
 - `npm run extract:tuf` - refresh takeUforward JSON extracts.
 - `npm run excel` - regenerate Excel exports in `sheets/`.

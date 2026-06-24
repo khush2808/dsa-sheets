@@ -1,10 +1,9 @@
 import { cp, mkdir, rm, writeFile } from 'node:fs/promises';
 
 const outputDir = 'dist-static';
-const paths = [
+const staticRoot = 'old/static';
+const staticPaths = [
   'assets',
-  'data',
-  'sheets',
   'blind-75',
   'blind-75-sheet',
   'neetcode-150',
@@ -16,11 +15,16 @@ const paths = [
   'strivers-a2z-sheet',
   'index.html'
 ];
+const sharedPaths = ['data', 'sheets'];
 
 await rm(outputDir, { recursive: true, force: true });
 await mkdir(outputDir, { recursive: true });
 
-for (const path of paths) {
+for (const path of staticPaths) {
+  await cp(`${staticRoot}/${path}`, `${outputDir}/${path}`, { recursive: true });
+}
+
+for (const path of sharedPaths) {
   await cp(path, `${outputDir}/${path}`, { recursive: true });
 }
 

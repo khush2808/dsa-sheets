@@ -12,4 +12,4 @@ const output = `window.DSA_SUPABASE_CONFIG = ${JSON.stringify(
   2
 )};\n`;
 
-await writeFile('assets/supabase-config.js', output);
+await writeFile('old/static/assets/supabase-config.js', output);
