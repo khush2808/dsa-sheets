@@ -8,6 +8,7 @@ import {
   mergeProgress,
   normalizeNotes
 } from '../lib/progress';
+import { sheets } from '../lib/sheets';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -48,6 +49,25 @@ const linkSet = (problem) => [
 ].filter(([, href]) => href);
 
 const primaryLink = (problem) => articleLink(problem) || problem.leetcode || problem.youtube || problem.link;
+
+const sheetDescriptions = {
+  'strivers-a2z-sheet': 'The full A2Z DSA track with article, LeetCode, video, Plus, and editorial links.',
+  'blind-75-sheet': 'The takeUforward Blind 75 list with video-backed interview problems.',
+  'sde-sheet': "Striver's most frequently asked coding interview questions, grouped by topic.",
+  'striver-79-sheet': 'Last-minute interview preparation with a compact set of high-signal problems.',
+  'neetcode-all': 'The full NeetCode catalog with pattern filters and links to solutions.',
+  'neetcode-250': 'A focused NeetCode 250 route and export for the common track.',
+  'neetcode-150': 'The 150-problem NeetCode list with the same filterable UI.',
+  'blind-75': 'The NeetCode-flavored Blind 75 list, kept separate from the TUF Blind 75 sheet.'
+};
+
+const markLabel = (sheet) => {
+  if (sheet.slug === 'blind-75-sheet' || sheet.slug === 'blind-75') return '75';
+  if (sheet.slug === 'striver-79-sheet') return '79';
+  if (sheet.slug === 'sde-sheet') return 'SDE';
+  if (sheet.type === 'neetcode') return 'NC';
+  return 'A2Z';
+};
 
 const readCollapsed = () => {
   try {
@@ -337,39 +357,81 @@ export default function SheetApp({ sheet, initialProblems }) {
   const syncState = syncStateFor(syncStatus, user);
   const syncLabel = user?.email || syncStatus;
   const isSyncing = syncState === 'syncing';
+  const shownLabel = category === 'all' ? categoryLabel(sheet) : groupedProblems[0]?.[0] || categoryLabel(sheet);
 
   return (
-    <main className="next-shell">
-      <header className="next-toolbar">
-        <a href="/">All sheets</a>
-        <div className="next-toolbar-controls">
-          <label>
-            Links
-            <select value={linkTarget} onChange={(event) => setLinkTarget(event.target.value)}>
-              <option value="same">Same tab</option>
-              <option value="new">New tab</option>
-            </select>
-          </label>
-          <button type="button" onClick={() => setTheme((current) => (current === 'dark' ? 'light' : 'dark'))} aria-pressed={theme === 'dark'}>
-            {theme === 'dark' ? 'Light' : 'Dark'}
+    <div className="shell">
+      <aside className="side">
+        <div className="brand">
+          <div className="brand-main">
+            <div className="mark">{markLabel(sheet)}</div>
+            <div>
+              <h1>{sheet.title}</h1>
+              <p>{sheet.subtitle}</p>
+            </div>
+          </div>
+          <button
+            id="themeToggle"
+            className="icon-button"
+            type="button"
+            onClick={() => setTheme((current) => (current === 'dark' ? 'light' : 'dark'))}
+            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            aria-pressed={theme === 'dark'}
+          >
+            <svg className="theme-icon moon-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M21 12.8A8.5 8.5 0 1 1 11.2 3 6.5 6.5 0 0 0 21 12.8Z"></path>
+            </svg>
+            <svg className="theme-icon sun-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="4"></circle>
+              <path d="M12 2v2"></path>
+              <path d="M12 20v2"></path>
+              <path d="m4.93 4.93 1.41 1.41"></path>
+              <path d="m17.66 17.66 1.41 1.41"></path>
+              <path d="M2 12h2"></path>
+              <path d="M20 12h2"></path>
+              <path d="m6.34 17.66-1.41 1.41"></path>
+              <path d="m19.07 4.93-1.41 1.41"></path>
+            </svg>
           </button>
-          <span className="next-sync" data-state={syncState} aria-live="polite">
-            <span className="next-sync-dot" aria-hidden="true"></span>
-            <span>{syncLabel}</span>
-          </span>
-          {user ? (
-            <button className="next-sync-button" type="button" onClick={() => syncRemote(user)} disabled={isSyncing}>
-              {syncState === 'error' ? 'Retry sync' : 'Sync now'}
-            </button>
-          ) : null}
-          {user ? (
-            <button type="button" onClick={signOut}>
-              Sign out
-            </button>
-          ) : (
-            <>
-              <form className="next-auth-form" onSubmit={signInWithEmail}>
+        </div>
+        <nav className="nav-links">
+          {sheets.map((item) => (
+            <a key={item.slug} aria-current={item.slug === sheet.slug ? 'page' : undefined} href={`/${item.slug}/`}>
+              {item.title}
+            </a>
+          ))}
+          <a href="/">All sheets</a>
+        </nav>
+        <section className="account-panel" aria-label="Account">
+          <h2>Account</h2>
+          <div className="account-card">
+            <div className="account-card-head">
+              <span className="user-avatar" aria-hidden="true">
+                {user?.email?.[0]?.toUpperCase() || 'U'}
+              </span>
+              <div>
+                <b>{user?.email || 'Local progress'}</b>
+                <p>
+                  <span className={`sync-dot ${syncState}`} aria-hidden="true"></span>
+                  {user ? (syncState === 'error' ? 'Sync issue' : syncState === 'syncing' ? 'Syncing...' : 'Synced') : 'Local only'}
+                </p>
+              </div>
+            </div>
+            {user ? (
+              <>
+                <button type="button" onClick={() => syncRemote(user)} disabled={isSyncing}>
+                  {syncState === 'error' ? 'Retry sync' : 'Sync now'}
+                </button>
+                <button type="button" onClick={signOut}>
+                  Sign out
+                </button>
+              </>
+            ) : (
+              <form className="account-auth-form" onSubmit={signInWithEmail}>
+                <label htmlFor="authEmail">Email</label>
                 <input
+                  id="authEmail"
                   type="email"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
@@ -378,42 +440,31 @@ export default function SheetApp({ sheet, initialProblems }) {
                   disabled={!supabase}
                 />
                 <button type="submit" disabled={!supabase || !email.trim()}>
-                  Email
+                  Send magic link
                 </button>
+                <div className="auth-buttons">
+                  <button type="button" onClick={() => signInWithProvider('google')} disabled={!supabase}>
+                    Google
+                  </button>
+                  <button type="button" onClick={() => signInWithProvider('github')} disabled={!supabase}>
+                    GitHub
+                  </button>
+                </div>
               </form>
-              <button type="button" onClick={() => signInWithProvider('google')} disabled={!supabase}>
-                Google
-              </button>
-              <button type="button" onClick={() => signInWithProvider('github')} disabled={!supabase}>
-                GitHub
-              </button>
-            </>
-          )}
-          {authMessage ? <span className="next-auth-message">{authMessage}</span> : null}
-        </div>
-      </header>
-      <section className="next-hero compact">
-        <p>{sheet.kicker}</p>
-        <h1>{sheet.title}</h1>
-        <span>
-          {totalCompleted}/{filteredProblems.length} shown completed
-        </span>
-      </section>
-      <section className="next-overview" aria-label="Sheet overview">
-        <div className="next-stats">
-          {[
-            ['Problems', stats.problems],
-            ['Easy', stats.easy],
-            ['Medium', stats.medium],
-            ['Hard', stats.hard]
-          ].map(([label, value]) => (
-            <div key={label} className="next-stat">
-              <b>{value}</b>
-              <span>{label}</span>
-            </div>
-          ))}
-        </div>
-        <nav className="next-categories" aria-label={categoryLabel(sheet)}>
+            )}
+            {authMessage ? <p>{authMessage}</p> : null}
+          </div>
+        </section>
+        <section className="link-target-panel" aria-label="Problem link behavior">
+          <h2>Links</h2>
+          <label htmlFor="linkTarget">Open problem links</label>
+          <select id="linkTarget" value={linkTarget} onChange={(event) => setLinkTarget(event.target.value)}>
+            <option value="same">Same tab</option>
+            <option value="new">New tab</option>
+          </select>
+        </section>
+        <h2>{categoryLabel(sheet)}</h2>
+        <div className="category-list">
           <button type="button" className={category === 'all' ? 'active' : ''} onClick={() => setCategory('all')}>
             <span>All</span>
             <b>{routeProblems.length}</b>
@@ -427,65 +478,124 @@ export default function SheetApp({ sheet, initialProblems }) {
               </button>
             );
           })}
-        </nav>
-      </section>
-      <section className="next-filters">
-        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search problems" />
-        <button type="button" onClick={pickRandomProblem} disabled={!filteredProblems.length}>
-          Random
-        </button>
-        {['easy', 'medium', 'hard'].map((difficulty) => (
-          <label key={difficulty}>
-            <input
-              type="checkbox"
-              checked={difficulties.includes(difficulty)}
-              onChange={(event) =>
-                setDifficulties((current) => (event.target.checked ? [...current, difficulty] : current.filter((item) => item !== difficulty)))
-              }
-            />
-            {difficulty}
-          </label>
-        ))}
-        {sheet.type === 'neetcode' ? (
-          <label>
-            <input type="checkbox" checked={includePro} onChange={(event) => setIncludePro(event.target.checked)} />
-            Pro
-          </label>
-        ) : null}
-      </section>
-      <section className="next-problems">
+        </div>
+      </aside>
+      <main className="main">
+        <section className="top">
+          <div className="hero">
+            <div className="hero-content">
+              <p className="eyebrow">{sheet.kicker}</p>
+              <h2>{sheet.title}</h2>
+              <p>{sheetDescriptions[sheet.slug] || sheet.subtitle}</p>
+            </div>
+          </div>
+          <aside className="summary">
+            <div className="stat-grid">
+              {[
+                ['Problems', stats.problems],
+                ['Easy', stats.easy],
+                ['Medium', stats.medium],
+                ['Hard', stats.hard]
+              ].map(([label, value]) => (
+                <div key={label} className="stat">
+                  <b>{value}</b>
+                  <span>{label}</span>
+                </div>
+              ))}
+            </div>
+            <div className="summary-actions">
+              <a className="download" href="/sheets/dsa-problem-lists.xlsx">
+                Download
+              </a>
+              <span>
+                {totalCompleted}/{filteredProblems.length} shown completed
+              </span>
+            </div>
+          </aside>
+        </section>
+        <section className="toolbar">
+          <input id="search" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search problems" />
+          <details id="difficultyFilter" className="filter-dropdown">
+            <summary>
+              <span>{difficulties.length ? difficulties.map((item) => item[0].toUpperCase() + item.slice(1)).join(', ') : 'No difficulties'}</span>
+            </summary>
+            <div className="filter-menu">
+              {['easy', 'medium', 'hard'].map((difficulty) => (
+                <label key={difficulty}>
+                  <input
+                    type="checkbox"
+                    value={difficulty}
+                    checked={difficulties.includes(difficulty)}
+                    onChange={(event) =>
+                      setDifficulties((current) => (event.target.checked ? [...current, difficulty] : current.filter((item) => item !== difficulty)))
+                    }
+                  />
+                  {difficulty[0].toUpperCase() + difficulty.slice(1)}
+                </label>
+              ))}
+            </div>
+          </details>
+          {sheet.type === 'neetcode' ? (
+            <details id="proFilter" className="filter-dropdown">
+              <summary>
+                <span>{includePro ? 'Pro' : 'No Pro questions'}</span>
+              </summary>
+              <div className="filter-menu">
+                <label>
+                  <input id="includePro" type="checkbox" checked={includePro} onChange={(event) => setIncludePro(event.target.checked)} />
+                  Pro questions
+                </label>
+              </div>
+            </details>
+          ) : (
+            <span aria-hidden="true"></span>
+          )}
+          <button id="randomButton" type="button" onClick={pickRandomProblem} disabled={!filteredProblems.length}>
+            Random Pick
+          </button>
+        </section>
+        <section className="problem-area">
+          <div className="problem-head">
+            <span>{shownLabel}</span>
+            <span className="result-count">{filteredProblems.length} shown</span>
+          </div>
+          <div className="problem-list">
         {groupedProblems.map(([name, problems]) => {
           const key = slug(name);
           const completed = problems.filter((problem) => progress[problemIdFor(sheet, problem)]?.completed).length;
           const complete = completed === problems.length;
           const partial = completed > 0 && completed < problems.length;
           return (
-            <section key={name} className={`next-section ${complete ? 'complete' : ''} ${celebratingSections.has(key) ? 'celebrating' : ''}`}>
-              <header>
-                <button type="button" onClick={() => toggleCollapse(key)} aria-expanded={!collapsed.has(key)}>
-                  {collapsed.has(key) ? '>' : 'v'}
+            <section key={name} className={`problem-section ${complete ? 'section-complete' : ''} ${celebratingSections.has(key) ? 'section-just-completed' : ''}`}>
+              <header className="section-card">
+                <button className="section-collapse" type="button" onClick={() => toggleCollapse(key)} aria-label={`${collapsed.has(key) ? 'Expand' : 'Collapse'} ${name}`} aria-expanded={!collapsed.has(key)}>
+                  <span aria-hidden="true"></span>
                 </button>
                 <div>
-                  <h2>{name}</h2>
-                  <span>
-                    {completed}/{problems.length}
-                  </span>
+                  <h3>{name}</h3>
+                  <p>{sheet.type === 'striver' ? 'Section' : 'Pattern'}</p>
                 </div>
-                <input
-                  type="checkbox"
-                  checked={complete}
-                  ref={(input) => {
-                    if (input) input.indeterminate = partial;
-                  }}
-                  onChange={async (event) => {
-                    const next = await toggleSection(problems, event.target.checked);
-                    if (event.target.checked && !complete && sectionIsComplete(problems, next)) celebrateSection(key);
-                  }}
-                  aria-label={`Mark ${name} complete`}
-                />
+                <div className="section-status">
+                  <label className="section-done-control" title="Mark section complete">
+                    <input
+                      type="checkbox"
+                      checked={complete}
+                      ref={(input) => {
+                        if (input) input.indeterminate = partial;
+                      }}
+                      onChange={async (event) => {
+                        const next = await toggleSection(problems, event.target.checked);
+                        if (event.target.checked && !complete && sectionIsComplete(problems, next)) celebrateSection(key);
+                      }}
+                      aria-label={`Mark ${name} complete`}
+                    />
+                  </label>
+                  <span>{completed}/{problems.length}</span>
+                </div>
               </header>
-              {!collapsed.has(key)
-                ? problems.map((problem) => {
+              {!collapsed.has(key) ? (
+                <div className="section-problems">
+                  {problems.map((problem) => {
                     const problemId = problemIdFor(sheet, problem);
                     const record = progress[problemId] || { notes: [] };
                     const notes = normalizeNotes(record);
@@ -493,34 +603,37 @@ export default function SheetApp({ sheet, initialProblems }) {
                     const mainHref = primaryLink(problem);
                     const links = linkSet(problem);
                     return (
-                      <article key={problemId}>
-                        <input
-                          type="checkbox"
-                          checked={Boolean(record.completed)}
-                          onChange={async (event) => {
-                            const next = await updateProblem(problemId, { completed: event.target.checked });
-                            if (event.target.checked && !complete && sectionIsComplete(problems, next)) celebrateSection(key);
-                          }}
-                          aria-label={`Mark ${problem.problem_name} complete`}
-                        />
-                        <div>
-                          {mainHref ? (
-                            <a className="next-problem-link" href={mainHref} {...linkProps}>
-                              {problem.problem_name}
-                            </a>
-                          ) : (
-                            <b>{problem.problem_name}</b>
-                          )}
-                          <span>
-                            {subName(sheet, problem)} · {problem.difficulty}
-                          </span>
+                      <article key={problemId} className={`problem-row ${mainHref ? 'clickable' : ''}`}>
+                        <label className="done-control" title="Mark complete">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(record.completed)}
+                            onChange={async (event) => {
+                              const next = await updateProblem(problemId, { completed: event.target.checked });
+                              if (event.target.checked && !complete && sectionIsComplete(problems, next)) celebrateSection(key);
+                            }}
+                            aria-label={`Mark ${problem.problem_name} complete`}
+                          />
+                        </label>
+                        <div className="problem-title">
+                          <div className="problem-line">
+                            {mainHref ? (
+                              <a className="primary-link" href={mainHref} {...linkProps}>
+                                {problem.problem_name}
+                              </a>
+                            ) : (
+                              <b>{problem.problem_name}</b>
+                            )}
+                            <span className={`pill ${difficultyKey(problem.difficulty)}`}>{problem.difficulty}</span>
+                          </div>
+                          <span>{subName(sheet, problem) || ''}</span>
                           {notesOpen ? (
-                            <div className="next-notes">
-                              <div className="next-notes-banner">{notes.length} notes</div>
-                              <div className="next-notes-list">
+                            <div className="notes-panel">
+                              <div className="notes-banner">{notes.length} notes</div>
+                              <div className="notes-list">
                                 {notes.length ? (
                                   notes.map((note) => (
-                                    <div className="next-note-editor" key={note.id}>
+                                    <div className="note-editor" key={note.id}>
                                       <textarea
                                         value={note.text}
                                         onChange={(event) => editNote(problemId, note.id, event.target.value)}
@@ -529,7 +642,7 @@ export default function SheetApp({ sheet, initialProblems }) {
                                         rows={2}
                                       />
                                       <button
-                                        className="next-delete-note-button"
+                                        className="delete-note-button"
                                         type="button"
                                         onClick={() => deleteNote(problemId, note.id)}
                                         aria-label="Delete note"
@@ -540,44 +653,45 @@ export default function SheetApp({ sheet, initialProblems }) {
                                     </div>
                                   ))
                                 ) : (
-                                  <p className="next-notes-empty">No notes yet.</p>
+                                  <p className="notes-empty">No notes yet.</p>
                                 )}
                               </div>
-                              <button className="next-add-note-button" type="button" onClick={() => addNote(problemId)} title="New note">
+                              <button className="add-note-button" type="button" onClick={() => addNote(problemId)} title="New note">
                                 <span aria-hidden="true">+</span>
                                 <span>New note</span>
                               </button>
                             </div>
                           ) : null}
                         </div>
-                        <div className="next-row-actions">
-                          <div className="next-links">
-                            {links.map(([label, href]) => (
-                              <a key={label} href={href} {...linkProps}>
-                                {label}
-                              </a>
-                            ))}
-                          </div>
+                        <div className="links">
+                          {links.map(([label, href]) => (
+                            <a key={label} href={href} {...linkProps}>
+                              {label}
+                            </a>
+                          ))}
                           <button
-                            className={`next-note-toggle ${notesOpen ? 'active' : ''}`}
+                            className={`note-toggle ${notesOpen ? 'active' : ''}`}
                             type="button"
                             onClick={() => setOpenNotes((current) => new Set(current.has(problemId) ? [...current].filter((id) => id !== problemId) : [...current, problemId]))}
                             aria-label={`Notes for ${problem.problem_name}`}
                             aria-expanded={notesOpen}
                             title="Notes"
                           >
-                            <span className="next-note-icon" aria-hidden="true"></span>
-                            <span className="next-note-count">{notes.length}</span>
+                            <span className="note-icon" aria-hidden="true"></span>
+                            <span className="note-count">{notes.length || ''}</span>
                           </button>
                         </div>
                       </article>
                     );
-                  })
-                : null}
+                  })}
+                </div>
+              ) : null}
             </section>
           );
         })}
-      </section>
-    </main>
+          </div>
+        </section>
+      </main>
+    </div>
   );
 }
