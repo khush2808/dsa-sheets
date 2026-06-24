@@ -221,6 +221,57 @@ select {
   font-weight: 750;
 }
 
+.next-sync {
+  max-width: min(18rem, 70vw);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-strong);
+  color: var(--muted);
+  padding: 0.32rem 0.6rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.84rem;
+  font-weight: 850;
+}
+
+.next-sync span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.next-sync-dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 999px;
+  background: var(--muted);
+  flex: 0 0 auto;
+}
+
+.next-sync[data-state="syncing"] .next-sync-dot {
+  border: 2px solid color-mix(in srgb, var(--accent), transparent 58%);
+  border-top-color: var(--accent);
+  background: transparent;
+  animation: nextSyncSpin 0.72s linear infinite;
+}
+
+.next-sync[data-state="synced"] .next-sync-dot {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent), transparent 82%);
+}
+
+.next-sync[data-state="error"] {
+  border-color: color-mix(in srgb, var(--danger), var(--line) 35%);
+  background: color-mix(in srgb, var(--danger), var(--surface) 88%);
+  color: var(--ink);
+}
+
+.next-sync[data-state="error"] .next-sync-dot {
+  background: var(--danger);
+}
+
 .next-toolbar label {
   display: inline-flex;
   align-items: center;
@@ -381,6 +432,12 @@ select {
 
   68% {
     transform: scale(0.992);
+  }
+}
+
+@keyframes nextSyncSpin {
+  to {
+    transform: rotate(360deg);
   }
 }
 
@@ -590,6 +647,7 @@ input[type="checkbox"] {
 
 @media (prefers-reduced-motion: reduce) {
   .next-section,
+  .next-sync[data-state="syncing"] .next-sync-dot,
   .next-section.celebrating header::after,
   .next-section.celebrating header input[type="checkbox"],
   .next-section.celebrating header span {

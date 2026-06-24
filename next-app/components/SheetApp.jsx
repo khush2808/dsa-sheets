@@ -69,6 +69,13 @@ const readLocalSetting = (key, fallback) => {
   }
 };
 
+const syncStateFor = (status, user) => {
+  if (status === 'Syncing...' || status === 'Checking session' || status === 'Sending magic link' || status === 'Signing out') return 'syncing';
+  if (status === 'Sync issue' || status === 'Auth error') return 'error';
+  if (user || status === 'Synced') return 'synced';
+  return 'local';
+};
+
 export default function SheetApp({ sheet, initialProblems }) {
   const localProgressAdapter = useMemo(() => createLocalProgressAdapter(), []);
   const [user, setUser] = useState(null);
@@ -308,6 +315,8 @@ export default function SheetApp({ sheet, initialProblems }) {
 
   const linkProps = linkTarget === 'new' ? { target: '_blank', rel: 'noopener noreferrer' } : {};
   const totalCompleted = filteredProblems.filter((problem) => progress[problemIdFor(sheet, problem)]?.completed).length;
+  const syncState = syncStateFor(syncStatus, user);
+  const syncLabel = user?.email || syncStatus;
 
   return (
     <main className="next-shell">
@@ -324,7 +333,10 @@ export default function SheetApp({ sheet, initialProblems }) {
           <button type="button" onClick={() => setTheme((current) => (current === 'dark' ? 'light' : 'dark'))} aria-pressed={theme === 'dark'}>
             {theme === 'dark' ? 'Light' : 'Dark'}
           </button>
-          <span>{user?.email || syncStatus}</span>
+          <span className="next-sync" data-state={syncState} aria-live="polite">
+            <span className="next-sync-dot" aria-hidden="true"></span>
+            <span>{syncLabel}</span>
+          </span>
           {user ? (
             <button type="button" onClick={signOut}>
               Sign out
