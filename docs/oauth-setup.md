@@ -29,11 +29,12 @@ Google and GitHub OAuth setup is not completed by code changes alone. The provid
 - `http://127.0.0.1:5173/**`
 - `http://localhost:3000/**`
 - `http://127.0.0.1:3000/**`
+- any alternate local port you use with `npm run dev` or `npm run dev:next`
 - Vercel production URL `/**`
 - GitHub Pages URL `/**`
 - custom domain `/**` if used
 
-After provider setup, OAuth can be tested locally as long as the localhost redirect URLs are allowlisted here.
+After provider setup, OAuth can be tested locally as long as the exact localhost origin is allowlisted here. The app redirects back to the current origin and path, so ports must match the running dev server.
 
 ## Google OAuth Setup
 
@@ -54,6 +55,7 @@ https://keimfozobkyubbxojsqd.supabase.co/auth/v1/callback
 - `http://127.0.0.1:5173`
 - `http://localhost:3000`
 - `http://127.0.0.1:3000`
+- any alternate local origins you use
 - Vercel origin
 - GitHub Pages origin
 - custom domain origin if used

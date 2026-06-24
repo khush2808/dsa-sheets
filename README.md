@@ -1,88 +1,96 @@
 # DSA Sheets
 
-Extracted problem data, Excel exports, and static sheet browsers for:
+DSA Sheets is a curated problem browser with two deployable frontends backed by the same static data and Supabase user-progress database.
 
-- `strivers-a2z-sheet` - Striver's A2Z Sheet
-- `striver-450-sheet` - alias to Striver's A2Z Sheet
+- **GitHub Pages/static app**: root HTML routes plus `assets/app.js`.
+- **Vercel/Next app**: `next-app/`, statically exported to `next-app/out`.
+- **Supabase**: Auth, Postgres, and RLS for signed-in progress and notes.
+- **Local-first UX**: anonymous usage stores progress in `localStorage`; signed-in usage merges local records with Supabase.
+
+## Routes
+
+- `strivers-a2z-sheet` - Striver A2Z
+- `striver-450-sheet` - alias to Striver A2Z
 - `blind-75-sheet` - takeUforward Blind 75 Sheet
-- `sde-sheet` - Striver's SDE Sheet
-- `striver-79-sheet` - Striver's 79 Sheet
+- `sde-sheet` - Striver SDE Sheet
+- `striver-79-sheet` - Striver 79
 - `neetcode-all` - NeetCode All
 - `neetcode-250` - NeetCode 250
 - `neetcode-150` - NeetCode 150
 - `blind-75` - NeetCode Blind 75
 
-## Files
+## Repository Layout
 
-- `assets/` - shared UI scripts and styles
-- `docs/` - project knowledge base, architecture notes, and backend/auth plans
-- `data/strivers-a2z-problems.json`
-- `data/blind-75-sheet-problems.json`
-- `data/sde-sheet-problems.json`
-- `data/striver-79-sheet-problems.json`
-- `data/neetcode-problems.json`
-- `sheets/strivers-a2z-problems.xlsx`
-- `sheets/blind-75-sheet-problems.xlsx`
-- `sheets/sde-sheet-problems.xlsx`
-- `sheets/striver-79-sheet-problems.xlsx`
-- `sheets/neetcode-problems.xlsx`
-- `sheets/dsa-problem-lists.xlsx`
+- `assets/` - legacy/static app JavaScript and CSS used by GitHub Pages.
+- Root route folders such as `neetcode-150/` - static app HTML entrypoints.
+- `next-app/` - Next.js implementation used by Vercel.
+- `data/` - checked-in JSON extracts used by both apps and Excel generation.
+- `sheets/` - checked-in Excel exports generated from `data/`.
+- `scripts/` - extract, export, env generation, and static staging scripts.
+- `supabase/` - Supabase config and migrations.
+- `.github/workflows/pages.yml` - GitHub Pages deployment.
+- `vercel.json` - Vercel build/output configuration.
+- `docs/` - project knowledge base for future agents.
 
-## Local Preview
+Generated/local-only paths are ignored: `dist-static/`, `next-app/.next/`, `next-app/out/`, `.env`, `next-app/.env.local`, `supabase/.temp/`, and `node_modules/`.
 
-Install dependencies once:
+## Local Setup
+
+Install dependencies:
 
 ```sh
 npm install
 ```
 
-Run the dev server with auto-reload:
-
-```sh
-npm run dev
-```
-
-Vite serves the repository root as a static multi-page site and opens `/`. Changes to HTML, CSS, and JS reload the browser automatically.
-
-For a no-dependency fallback, serve the folder with any static server:
-
-```sh
-python3 -m http.server 4174
-```
-
-Routes: `/strivers-a2z-sheet/`, `/blind-75-sheet/`, `/sde-sheet/`, `/striver-79-sheet/`, `/neetcode-all/`, `/neetcode-250/`, `/neetcode-150/`, and `/blind-75/`.
-
-## Scripts
-
-- `npm run dev` - start Vite dev server with auto-reload.
-- `npm run dev:next` - generate `next-app/.env.local` from root/public env values and start the Next.js app.
-- `npm run preview` - preview the static site through Vite.
-- `npm run build` - generate static Supabase browser config and stage the GitHub Pages build in `dist-static/`.
-- `npm run build:next` - generate `next-app/.env.local` and static-export the Next.js app.
-- `npm run extract:tuf` - refresh the takeUforward sheet JSON files.
-- `npm run excel` - regenerate Excel exports.
-- `npm run validate` - syntax-check scripts and regenerate Excel exports.
-
-## Supabase Config
-
-Keep secrets in `.env` only. The browser app needs only:
+Create `.env` locally with the public Supabase values:
 
 ```sh
 NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
 ```
 
-The static build writes these public values into `assets/supabase-config.js`. The Next scripts write the same public values into ignored `next-app/.env.local` before dev/build. For GitHub Pages, add repository secrets named `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`; for Vercel/Next, add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
+The publishable key is safe for browser code. Do not commit service-role keys, provider secrets, tokens, or `.env` files.
+
+## Common Commands
+
+- `npm run dev` - start the root static app with Vite.
+- `npm run dev:next` - generate `next-app/.env.local` and start Next.js.
+- `npm run preview` - Vite preview helper.
+- `npm run build` - generate `assets/supabase-config.js` and stage GitHub Pages output in `dist-static/`.
+- `npm run build:next` - generate `next-app/.env.local` and static-export the Next app to `next-app/out`.
+- `npm run extract:tuf` - refresh takeUforward JSON extracts.
+- `npm run excel` - regenerate Excel exports in `sheets/`.
+- `npm run validate` - syntax-check scripts and regenerate Excel exports.
+
+`npm run validate` may rewrite `.xlsx` files. Restore spreadsheet noise with `git restore -- sheets/*.xlsx` unless the exports intentionally changed.
+
+To preview the staged GitHub Pages artifact after `npm run build`:
+
+```sh
+python3 -m http.server 4178 --bind 127.0.0.1 --directory dist-static
+```
 
 ## Deployment
 
-This branch supports two hosted surfaces:
+GitHub Pages:
 
-- **Vercel** builds the Next.js app with `npm run build:next` and serves `next-app/out`.
-- **GitHub Pages** runs `.github/workflows/pages.yml`, builds the static app with `npm run build`, and serves `dist-static`.
+1. `.github/workflows/pages.yml` runs on `main`.
+2. The workflow runs `npm ci` and `npm run build`.
+3. `dist-static/` is uploaded as the Pages artifact.
+4. Required secrets: `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`.
 
-Keep both public Supabase values configured in each host so auth and progress sync work from either URL.
+Vercel:
 
-## Project Notes
+1. `vercel.json` runs `npm run build:next`.
+2. Vercel serves `next-app/out`.
+3. Required env vars: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
 
-See [docs/README.md](./docs/README.md) for architecture notes and the planned path from localStorage progress to authenticated backend-backed user data.
+Supabase:
+
+- Apply migrations in `supabase/migrations/` with `supabase db push`.
+- Configure redirect URLs and OAuth providers in the Supabase dashboard.
+- See [docs/oauth-setup.md](./docs/oauth-setup.md).
+
+## More Detail
+
+Start with [docs/README.md](./docs/README.md) for architecture, deployment, data flow, and auth/backend notes.

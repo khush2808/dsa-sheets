@@ -1,13 +1,27 @@
 # Project Knowledge Base
 
-This folder is the working memory for the DSA Sheets project: architecture notes, implementation decisions, and future plans that should survive across coding sessions.
+This folder is the durable working memory for DSA Sheets. It should help future agents understand, verify, and deploy the project without asking the owner to reconstruct context.
 
 ## Start Here
 
-- [Architecture](./architecture.md) explains the current static-site shape, shared UI, data files, and progress storage boundary.
-- [Auth and Backend Plan](./auth-backend-plan.md) captures the recommended stack for moving saved progress and notes from localStorage to user accounts.
-- [OAuth Setup](./oauth-setup.md) documents Supabase Auth provider setup for Google, GitHub, Email, and required redirect URLs.
+- [Architecture](./architecture.md) - current app surfaces, runtime state, storage model, and safe organization notes.
+- [Deployment and Environments](./deployment.md) - GitHub Pages, Vercel, Supabase, env vars, and deployment checks.
+- [Data Flow](./data-flow.md) - JSON extracts, route data, Excel exports, and validation behavior.
+- [Auth and Backend](./auth-backend-plan.md) - current Supabase schema, RLS, sync behavior, and future backend notes.
+- [OAuth Setup](./oauth-setup.md) - dashboard steps for Google, GitHub, Email, and redirect URLs.
 
 ## Current Direction
 
-The app should stay low-ops and easy to deploy. Prefer managed services and Git-backed deployment so future agents can implement, push, and let the hosting platform deploy without the owner having to run infrastructure manually.
+The project intentionally has two frontends for now:
+
+- The **root static app** is the GitHub Pages production path.
+- The **Next.js app** in `next-app/` is the Vercel path and the likely long-term frontend.
+
+Keep both working until the owner explicitly decides to retire one. Avoid moving root static files unless `scripts/stage-static-site.mjs`, route URLs, docs, and deployment smoke tests are updated in the same change.
+
+## Safe Defaults
+
+- Keep `.env`, `next-app/.env.local`, `supabase/.temp/`, tokens, and service keys uncommitted.
+- Treat `dist-static/`, `next-app/.next/`, and `next-app/out/` as disposable build outputs.
+- Treat `sheets/*.xlsx` as generated but checked-in deliverables; restore them after validation unless data exports intentionally changed.
+- Run `npm run build:next`, `npm run build`, and `npm run validate` before shipping structural changes.
