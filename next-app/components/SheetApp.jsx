@@ -27,6 +27,8 @@ const groupName = (sheet, problem) => (sheet.type === 'striver' ? problem.catego
 
 const subName = (sheet, problem) => (sheet.type === 'striver' ? problem.subcategory_name : problem.code);
 
+const categoryLabel = (sheet) => (sheet.type === 'striver' ? 'Sections' : 'Patterns');
+
 const normalizeNotes = (record = {}) => (Array.isArray(record.notes) ? record.notes.filter((note) => note && typeof note.text === 'string') : []);
 
 const shouldKeepRecord = (record = {}) => Boolean(record.completed) || normalizeNotes(record).length > 0;
@@ -134,6 +136,7 @@ const mergeProgress = (localRecords, remoteRecords) => {
 export default function SheetApp({ sheet, initialProblems }) {
   const [user, setUser] = useState(null);
   const [syncStatus, setSyncStatus] = useState(supabase ? 'Checking session' : 'Local only');
+  const [category, setCategory] = useState('all');
   const [query, setQuery] = useState('');
   const [difficulties, setDifficulties] = useState(['easy', 'medium', 'hard']);
   const [includePro, setIncludePro] = useState(true);
@@ -183,16 +186,42 @@ export default function SheetApp({ sheet, initialProblems }) {
   const filteredProblems = useMemo(
     () =>
       initialProblems.filter((problem) => {
+        const group = groupName(sheet, problem) || 'Uncategorized';
         const haystack = [problem.problem_name, groupName(sheet, problem), subName(sheet, problem), problem.difficulty, problem.code]
           .join(' ')
           .toLowerCase();
         return (
+          (category === 'all' || slug(group) === category) &&
           difficulties.includes(difficultyKey(problem.difficulty)) &&
           (sheet.type !== 'neetcode' || includePro || !problem.list_membership?.pro) &&
           haystack.includes(query.toLowerCase())
         );
       }),
-    [difficulties, includePro, initialProblems, query, sheet]
+    [category, difficulties, includePro, initialProblems, query, sheet]
+  );
+
+  const routeProblems = useMemo(
+    () => initialProblems.filter((problem) => sheet.type !== 'neetcode' || includePro || !problem.list_membership?.pro),
+    [includePro, initialProblems, sheet]
+  );
+
+  const categoryOptions = useMemo(() => {
+    const groups = new Map();
+    routeProblems.forEach((problem) => {
+      const name = groupName(sheet, problem) || 'Uncategorized';
+      groups.set(name, (groups.get(name) || 0) + 1);
+    });
+    return [...groups.entries()];
+  }, [routeProblems, sheet]);
+
+  const stats = useMemo(
+    () => ({
+      problems: filteredProblems.length,
+      easy: filteredProblems.filter((problem) => difficultyKey(problem.difficulty) === 'easy').length,
+      medium: filteredProblems.filter((problem) => difficultyKey(problem.difficulty) === 'medium').length,
+      hard: filteredProblems.filter((problem) => difficultyKey(problem.difficulty) === 'hard').length
+    }),
+    [filteredProblems]
   );
 
   const groupedProblems = useMemo(() => {
@@ -371,6 +400,12 @@ export default function SheetApp({ sheet, initialProblems }) {
     setAuthMessage('');
   };
 
+  const pickRandomProblem = () => {
+    if (!filteredProblems.length) return;
+    const problem = filteredProblems[Math.floor(Math.random() * filteredProblems.length)];
+    setQuery(problem.problem_name);
+  };
+
   const linkProps = linkTarget === 'new' ? { target: '_blank', rel: 'noopener noreferrer' } : {};
   const totalCompleted = filteredProblems.filter((problem) => progress[problemIdFor(sheet, problem)]?.completed).length;
 
@@ -427,8 +462,41 @@ export default function SheetApp({ sheet, initialProblems }) {
           {totalCompleted}/{filteredProblems.length} shown completed
         </span>
       </section>
+      <section className="next-overview" aria-label="Sheet overview">
+        <div className="next-stats">
+          {[
+            ['Problems', stats.problems],
+            ['Easy', stats.easy],
+            ['Medium', stats.medium],
+            ['Hard', stats.hard]
+          ].map(([label, value]) => (
+            <div key={label} className="next-stat">
+              <b>{value}</b>
+              <span>{label}</span>
+            </div>
+          ))}
+        </div>
+        <nav className="next-categories" aria-label={categoryLabel(sheet)}>
+          <button type="button" className={category === 'all' ? 'active' : ''} onClick={() => setCategory('all')}>
+            <span>All</span>
+            <b>{routeProblems.length}</b>
+          </button>
+          {categoryOptions.map(([name, count]) => {
+            const key = slug(name);
+            return (
+              <button key={name} type="button" className={category === key ? 'active' : ''} onClick={() => setCategory(key)}>
+                <span>{name}</span>
+                <b>{count}</b>
+              </button>
+            );
+          })}
+        </nav>
+      </section>
       <section className="next-filters">
         <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search problems" />
+        <button type="button" onClick={pickRandomProblem} disabled={!filteredProblems.length}>
+          Random
+        </button>
         {['easy', 'medium', 'hard'].map((difficulty) => (
           <label key={difficulty}>
             <input
