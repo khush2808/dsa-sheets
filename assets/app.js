@@ -76,8 +76,18 @@ const normalizeNotes = (record = {}) => {
 
 const noteCount = (record = {}) => normalizeNotes(record).length;
 
+const normalizeNoteTombstones = (record = {}) =>
+  Object.fromEntries(
+    Object.entries(record.noteTombstones || {}).filter(
+      ([noteId, deletedAt]) => typeof noteId === 'string' && noteId && typeof deletedAt === 'string' && !Number.isNaN(Date.parse(deletedAt))
+    )
+  );
+
 const shouldKeepProgressRecord = (record = {}) =>
   Boolean(record.completed) || noteCount(record);
+
+const shouldKeepStoredProgressRecord = (record = {}) =>
+  shouldKeepProgressRecord(record) || Object.keys(normalizeNoteTombstones(record)).length > 0;
 
 const createLocalProgressAdapter = () => {
   const read = () => {
@@ -93,10 +103,11 @@ const createLocalProgressAdapter = () => {
     records[problemId] = {
       ...existing,
       notes: normalizeNotes(existing),
+      noteTombstones: normalizeNoteTombstones(existing),
       ...value,
       updatedAt
     };
-    if (!shouldKeepProgressRecord(records[problemId])) {
+    if (!shouldKeepStoredProgressRecord(records[problemId])) {
       delete records[problemId];
     }
   };
@@ -109,7 +120,8 @@ const createLocalProgressAdapter = () => {
           problemId,
           {
             ...record,
-            notes: normalizeNotes(record)
+            notes: normalizeNotes(record),
+            noteTombstones: normalizeNoteTombstones(record)
           }
         ])
       );
@@ -147,12 +159,13 @@ const remoteRowsToProgress = (progressRows = [], noteRows = []) => {
       ...records[row.problem_id],
       completed: row.completed,
       updatedAt: row.updated_at,
-      notes: []
+      notes: [],
+      noteTombstones: {}
     };
   });
   noteRows.forEach((row) => {
     if (!records[row.problem_id]) {
-      records[row.problem_id] = { notes: [] };
+      records[row.problem_id] = { notes: [], noteTombstones: {} };
     }
     records[row.problem_id].notes.push({
       id: row.id,
@@ -166,7 +179,8 @@ const remoteRowsToProgress = (progressRows = [], noteRows = []) => {
       problemId,
       {
         ...record,
-        notes: normalizeNotes(record)
+        notes: normalizeNotes(record),
+        noteTombstones: normalizeNoteTombstones(record)
       }
     ])
   );
@@ -243,6 +257,10 @@ const mergeProgressRecords = (localRecords, remoteRecords) => {
     const remoteRecord = merged[problemId] || { notes: [] };
     const localUpdated = Date.parse(localRecord.updatedAt || '') || 0;
     const remoteUpdated = Date.parse(remoteRecord.updatedAt || '') || 0;
+    const noteTombstones = {
+      ...normalizeNoteTombstones(remoteRecord),
+      ...normalizeNoteTombstones(localRecord)
+    };
     const notesById = new Map(normalizeNotes(remoteRecord).map((note) => [note.id, note]));
     normalizeNotes(localRecord).forEach((note) => {
       const existing = notesById.get(note.id);
@@ -256,10 +274,15 @@ const mergeProgressRecords = (localRecords, remoteRecords) => {
       ...remoteRecord,
       completed: localUpdated >= remoteUpdated ? Boolean(localRecord.completed) : Boolean(remoteRecord.completed),
       updatedAt: new Date(Math.max(localUpdated, remoteUpdated, Date.now())).toISOString(),
-      notes: [...notesById.values()]
+      notes: [...notesById.values()].filter((note) => {
+        const deletedAt = Date.parse(noteTombstones[note.id] || '') || 0;
+        const noteUpdated = Date.parse(note.updatedAt || '') || 0;
+        return deletedAt < noteUpdated;
+      }),
+      noteTombstones
     };
   });
-  return Object.fromEntries(Object.entries(merged).filter(([, record]) => shouldKeepProgressRecord(record)));
+  return Object.fromEntries(Object.entries(merged).filter(([, record]) => shouldKeepStoredProgressRecord(record)));
 };
 
 const persistRemoteIfSignedIn = async (problemId, record) => {
@@ -930,7 +953,13 @@ const init = async () => {
     const noteId = deleteButton.dataset.noteId;
     const progress = state.progress[problemId] || {};
     const notes = normalizeNotes(progress).filter((note) => note.id !== noteId);
-    await updateProblemProgress(problemId, { notes });
+    await updateProblemProgress(problemId, {
+      notes,
+      noteTombstones: {
+        ...normalizeNoteTombstones(progress),
+        [noteId]: new Date().toISOString()
+      }
+    });
     state.openNotes.add(problemId);
     rerender();
   });
