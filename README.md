@@ -15,6 +15,7 @@ Extracted problem data, Excel exports, and static sheet browsers for:
 ## Files
 
 - `assets/` - shared UI scripts and styles
+- `docs/` - project knowledge base, architecture notes, and backend/auth plans
 - `data/strivers-a2z-problems.json`
 - `data/blind-75-sheet-problems.json`
 - `data/sde-sheet-problems.json`
@@ -58,3 +59,7 @@ Routes: `/strivers-a2z-sheet/`, `/blind-75-sheet/`, `/sde-sheet/`, `/striver-79-
 - `npm run extract:tuf` - refresh the takeUforward sheet JSON files.
 - `npm run excel` - regenerate Excel exports.
 - `npm run validate` - syntax-check scripts and regenerate Excel exports.
+
+## Project Notes
+
+See [docs/README.md](./docs/README.md) for architecture notes and the planned path from localStorage progress to authenticated backend-backed user data.
