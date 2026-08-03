@@ -3,5 +3,10 @@
   "markdown.preview.scrollPreviewWithEditor": true,
   "markdown.preview.scrollEditorWithPreview": true,
   "markdown.preview.doubleClickToSwitchToEditor": true,
-  "markdown.extension.preview.autoShowPreviewToSide": true
+  "markdown.extension.preview.autoShowPreviewToSide": true,
+  "markdown-preview-github-styles.colorMode": "dark",
+  "markdown.preview.colorMode": "dark",
+  "markdown.styles": [
+    "./markdown-dark.css"
+  ]
 }

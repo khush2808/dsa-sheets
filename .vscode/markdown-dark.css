@@ -1,0 +1,32 @@
+body, .markdown-body, html {
+  background-color: #0d1117 !important;
+  color: #c9d1d9 !important;
+}
+
+a {
+  color: #58a6ff !important;
+}
+
+code, pre {
+  background-color: #161b22 !important;
+  color: #e6edf3 !important;
+  border-color: #30363d !important;
+}
+
+blockquote {
+  color: #8b949e !important;
+  border-left-color: #30363d !important;
+}
+
+table tr {
+  background-color: #0d1117 !important;
+  border-top-color: #21262d !important;
+}
+
+table tr:nth-child(2n) {
+  background-color: #161b22 !important;
+}
+
+table th, table td {
+  border-color: #30363d !important;
+}
