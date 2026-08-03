@@ -1,0 +1,7 @@
+{
+  "markdown.preview.autoReveal": true,
+  "markdown.preview.scrollPreviewWithEditor": true,
+  "markdown.preview.scrollEditorWithPreview": true,
+  "markdown.preview.doubleClickToSwitchToEditor": true,
+  "markdown.extension.preview.autoShowPreviewToSide": true
+}
