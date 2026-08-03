@@ -46,7 +46,7 @@ Indus Appstore (by PhonePe) is India's free Android App Store. Registration and 
 Fill in:
 - Developer Name
 - Support Email
-- Privacy Policy URL (e.g. GitHub Pages privacy policy link or hosted URL)
+- Privacy Policy URL: [https://dsa-sheets.vercel.app/privacy/](https://dsa-sheets.vercel.app/privacy/)
 
 ### C. App Asset & Metadata Requirements
 To submit your app on Indus Appstore, prepare:

@@ -1,6 +1,76 @@
-newfile.doc
-.DS_Store
+# Dependencies
 node_modules/
+
+# Environment & Secret files
+.env
+.env.*
+.env*.local
+!.env.example
+!.env.template
+
+# Android & Native Signing Keys / Keystores
+*.keystore
+*.jks
+*.pepk
+*.p12
+*.p8
+*.key
+*.pem
+*.crt
+*.cer
+*.der
+*.pfx
+*.asc
+*.gpg
+*.pk8
+debug.keystore
+release.keystore
+signing.properties
+keystore.properties
+local.properties
+
+# Google Services & Cloud Credentials
+google-services.json
+GoogleService-Info.plist
+*service-account*.json
+pc-api-*.json
+firebase-adminsdk*.json
+client_secret*.json
+credentials.json
+secrets.json
+secrets.yaml
+secrets.yml
+
+# Expo & EAS Credentials & Installers
+.eas/
+eas-credentials.json
+*.apk
+*.aab
+*.ipa
+*.apks
+
+# Expo & Native Build Folders / Caches
+.expo/
+dist/
+web-build/
+.kotlin/
+.gradle/
+build/
+
+# Vercel & Web Build
 .vercel/
 .vercel
-.env
+
+# Logs & Diagnostics
+*.log
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# OS & IDE Junk
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.idea/
+*.tsbuildinfo

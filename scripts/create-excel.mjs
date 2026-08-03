@@ -3,8 +3,8 @@ import path from 'node:path';
 import writeXlsxFile from 'write-excel-file/node';
 
 const root = path.resolve(import.meta.dirname, '..');
-const dataDir = path.join(root, 'data', 'json');
-const sheetsDir = path.join(root, 'data', 'excel');
+const dataDir = path.join(root, 'web', 'data', 'json');
+const sheetsDir = path.join(root, 'web', 'data', 'excel');
 
 const readJson = async (filename) =>
   JSON.parse(await fs.readFile(path.join(dataDir, filename), 'utf8'));

@@ -1,43 +1,83 @@
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
-# dependencies
+# Dependencies
 node_modules/
 
-# Expo
+# Expo Caches & Builds
 .expo/
 dist/
 web-build/
 expo-env.d.ts
 
-# Native
+# Native Prebuild Directories & Caches
+/ios
+/android
 .kotlin/
-*.orig.*
+.gradle/
+build/
+
+# Android & Native Signing Keys / Keystores
+*.keystore
 *.jks
-*.p8
+*.pepk
 *.p12
+*.p8
 *.key
-*.mobileprovision
+*.pem
+*.crt
+*.cer
+*.der
+*.pfx
+*.asc
+*.gpg
+*.pk8
+debug.keystore
+release.keystore
+signing.properties
+keystore.properties
+local.properties
+
+# Google Services & Cloud Credentials
+google-services.json
+GoogleService-Info.plist
+*service-account*.json
+pc-api-*.json
+firebase-adminsdk*.json
+client_secret*.json
+credentials.json
+secrets.json
+secrets.yaml
+secrets.yml
+
+# Expo & EAS Credentials & Installers
+.eas/
+eas-credentials.json
+*.apk
+*.aab
+*.ipa
+*.apks
+
+# Environment & Secret files
+.env
+.env.*
+.env*.local
+!.env.example
+!.env.template
 
 # Metro
 .metro-health-check*
 
-# debug
+# Debug & Logs
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+*.log
 
-# macOS
+# OS & macOS
 .DS_Store
-*.pem
+Thumbs.db
 
-# local env files
-.env*.local
-
-# typescript
+# TypeScript
 *.tsbuildinfo
 
 example
-
-# generated native folders
-/ios
-/android

@@ -3,7 +3,7 @@ import vm from 'node:vm';
 import path from 'node:path';
 
 const root = path.resolve(import.meta.dirname, '..');
-const dataDir = path.join(root, 'data', 'json');
+const dataDir = path.join(root, 'web', 'data', 'json');
 
 const sources = [
   {
